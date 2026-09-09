@@ -5,6 +5,7 @@ import { useAuthStore } from './state/authStore';
 import { AuthModal } from './components/AuthModal/AuthModal';
 import { GmailNotificationToast } from './components/GmailNotificationToast/GmailNotificationToast';
 import { ChatHistoryDrawer } from './components/ChatHistoryDrawer/ChatHistoryDrawer';
+import { LoginPage } from './pages/LoginPage';
 import { AgentConsole } from './pages/AgentConsole';
 import { ObservabilityDashboard } from './pages/ObservabilityDashboard';
 import { AcceptanceRunner } from './pages/AcceptanceRunner';
@@ -37,6 +38,16 @@ export const App: React.FC = () => {
   const currentUser = useAuthStore((s) => s.currentUser);
   const openAuthModal = useAuthStore((s) => s.openAuthModal);
   const savedSessions = useAuthStore((s) => s.savedSessions);
+
+  // GATEKEEPER: When visitor arrives and is not authenticated, show the Login Page first!
+  if (!currentUser) {
+    return (
+      <>
+        <LoginPage />
+        <GmailNotificationToast />
+      </>
+    );
+  }
 
   const handleRunDemo = () => {
     setActiveTab('console');
@@ -141,10 +152,19 @@ export const App: React.FC = () => {
             <button
               onClick={openAuthModal}
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700/80 text-slate-200 text-xs font-medium shadow-sm transition-all"
-              title="Sign in or switch User Profile"
+              title="View Account Profile"
             >
               <span className="text-sm">{currentUser?.avatar || '👤'}</span>
-              <span className="max-w-[80px] sm:max-w-[110px] truncate">{currentUser?.name || 'Sign In'}</span>
+              <span className="max-w-[80px] sm:max-w-[110px] truncate">{currentUser?.name || 'Account'}</span>
+            </button>
+
+            {/* Quick Sign Out Button to return to Login Page */}
+            <button
+              onClick={() => useAuthStore.getState().logout()}
+              className="px-2.5 py-1.5 rounded-xl bg-slate-900 hover:bg-red-950/60 border border-slate-800 hover:border-red-500/40 text-slate-400 hover:text-red-300 text-xs transition-colors"
+              title="Sign Out and return to Login Page"
+            >
+              Sign Out
             </button>
 
             {/* Connection Settings */}

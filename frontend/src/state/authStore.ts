@@ -44,7 +44,7 @@ interface AuthState {
   activeNotification: AuthNotification | null;
 
   // Actions
-  login: (name: string, emailOrId: string, provider?: 'google' | 'email') => void;
+  login: (name: string, emailOrId: string, provider?: 'google' | 'email' | 'guest') => void;
   requestEmailOtp: (name: string, email: string) => string;
   verifyOtp: (code: string) => { success: boolean; error?: string };
   resendOtp: () => string;
@@ -69,19 +69,19 @@ const DEFAULT_USER: UserProfile = {
   createdAt: Date.now(),
 };
 
-const getStoredUser = (): UserProfile => {
-  if (typeof window === 'undefined') return DEFAULT_USER;
+const getStoredUser = (): UserProfile | null => {
+  if (typeof window === 'undefined') return null;
   try {
     const raw = localStorage.getItem('vp_current_user');
     if (raw) return JSON.parse(raw);
   } catch (e) {
     console.warn('Failed to parse current user:', e);
   }
-  return DEFAULT_USER;
+  return null; // First-time visitor: not logged in, show Login Page first
 };
 
-const getStoredSessionsForUser = (userId: string): ChatSession[] => {
-  if (typeof window === 'undefined') return [];
+const getStoredSessionsForUser = (userId: string | undefined): ChatSession[] => {
+  if (!userId || typeof window === 'undefined') return [];
   try {
     const raw = localStorage.getItem(`vp_sessions_${userId}`);
     if (raw) return JSON.parse(raw);
@@ -93,7 +93,7 @@ const getStoredSessionsForUser = (userId: string): ChatSession[] => {
 
 export const useAuthStore = create<AuthState>((set, get) => {
   const initialUser = getStoredUser();
-  const initialSessions = getStoredSessionsForUser(initialUser.id);
+  const initialSessions = getStoredSessionsForUser(initialUser?.id);
   const initialSessionId = initialSessions[0]?.id || `session_${Date.now()}`;
 
   return {
@@ -105,7 +105,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
     pendingAuth: null,
     activeNotification: null,
 
-    login: (name: string, emailOrId: string, provider: 'google' | 'email' = 'email') => {
+    login: (name: string, emailOrId: string, provider: 'google' | 'email' | 'guest' = 'email') => {
       const cleanId = (emailOrId || name).toLowerCase().replace(/[^a-z0-9_]/g, '_');
       const user: UserProfile = {
         id: cleanId || `user_${Date.now()}`,
@@ -216,15 +216,13 @@ export const useAuthStore = create<AuthState>((set, get) => {
     clearNotification: () => set({ activeNotification: null }),
 
     logout: () => {
-      const guest = DEFAULT_USER;
       if (typeof window !== 'undefined') {
-        localStorage.setItem('vp_current_user', JSON.stringify(guest));
+        localStorage.removeItem('vp_current_user');
       }
-      const guestSessions = getStoredSessionsForUser(guest.id);
       set({
-        currentUser: guest,
-        savedSessions: guestSessions,
-        activeSessionId: guestSessions[0]?.id || `session_${Date.now()}`,
+        currentUser: null,
+        savedSessions: [],
+        activeSessionId: null,
         authStep: 'credentials',
         pendingAuth: null,
         activeNotification: null,
