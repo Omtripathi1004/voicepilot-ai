@@ -164,14 +164,16 @@ export const StatusIndicator: React.FC = () => {
         </div>
       )}
 
-      {/* WS Connection Pill */}
-      <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-slate-900/60 border border-slate-800 text-[11px] text-slate-400">
+      {/* Connection & Engine Status Pill */}
+      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-900/80 border border-slate-800 text-[11px] text-slate-300">
         <span
-          className={`h-1.5 w-1.5 rounded-full ${
-            connected ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]' : 'bg-rose-500'
+          className={`h-2 w-2 rounded-full ${
+            connected
+              ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]'
+              : 'bg-teal-400 shadow-[0_0_8px_rgba(45,212,191,0.8)] animate-pulse'
           }`}
         />
-        <span>{connected ? 'WS Online' : 'WS Reconnecting'}</span>
+        <span>{connected ? 'WS Backend Linked' : 'Cloud Voice Engine Ready'}</span>
       </div>
     </div>
   );

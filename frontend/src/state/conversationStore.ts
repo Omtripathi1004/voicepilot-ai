@@ -1,5 +1,6 @@
 // VoicePilot AI — Global Application State (Zustand)
 import { create } from 'zustand';
+import { useAuthStore } from './authStore';
 import type {
   ConversationStatus,
   ConversationTurn,
@@ -119,9 +120,12 @@ export const useConversationStore = create<ConversationStore>((set, get) => ({
   setSessionId: (id) => set({ sessionId: id }),
   setStatus: (s) => set({ status: s }),
 
-  addTurn: (turn) => set((state) => ({
-    turns: [...state.turns.slice(-50), turn], // keep last 50
-  })),
+  addTurn: (turn) => set((state) => {
+    const updated = [...state.turns.slice(-50), turn];
+    // Persist to user session storage
+    useAuthStore.getState().saveCurrentSessionTurns(updated);
+    return { turns: updated };
+  }),
 
   updateGenerationId: (id) => set({ currentGenerationId: id }),
 

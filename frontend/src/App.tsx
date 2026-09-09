@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { wsService } from './services/websocketService';
 import { useConversationStore } from './state/conversationStore';
+import { useAuthStore } from './state/authStore';
+import { AuthModal } from './components/AuthModal/AuthModal';
+import { ChatHistoryDrawer } from './components/ChatHistoryDrawer/ChatHistoryDrawer';
 import { AgentConsole } from './pages/AgentConsole';
 import { ObservabilityDashboard } from './pages/ObservabilityDashboard';
 import { AcceptanceRunner } from './pages/AcceptanceRunner';
@@ -25,9 +28,14 @@ export const App: React.FC = () => {
   }, []);
 
   const [showConfigModal, setShowConfigModal] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const wsUrl = useConversationStore((s) => s.wsUrl);
   const setWsUrl = useConversationStore((s) => s.setWsUrl);
   const [customWsUrl, setCustomWsUrl] = useState(wsUrl);
+
+  const currentUser = useAuthStore((s) => s.currentUser);
+  const openAuthModal = useAuthStore((s) => s.openAuthModal);
+  const savedSessions = useAuthStore((s) => s.savedSessions);
 
   const handleRunDemo = () => {
     setActiveTab('console');
@@ -100,6 +108,7 @@ export const App: React.FC = () => {
 
           {/* Right Action Utilities */}
           <div className="flex items-center gap-2">
+            {/* Quick Interruption Demo */}
             <button
               onClick={handleRunDemo}
               disabled={isDemoRunning}
@@ -114,13 +123,36 @@ export const App: React.FC = () => {
               <span>{isDemoRunning ? 'Running Demo...' : 'Quick Demo'}</span>
             </button>
 
+            {/* Saved Chats Drawer Toggle */}
+            <button
+              onClick={() => setIsHistoryOpen(true)}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 text-xs transition-colors"
+              title="View saved conversations for your user ID"
+            >
+              <span>🗂️</span>
+              <span className="hidden sm:inline">Chats</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-slate-800 text-brand-300 font-mono">
+                {savedSessions.length}
+              </span>
+            </button>
+
+            {/* User Account / Profile Button */}
+            <button
+              onClick={openAuthModal}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700/80 text-slate-200 text-xs font-medium shadow-sm transition-all"
+              title="Sign in or switch User Profile"
+            >
+              <span className="text-sm">{currentUser?.avatar || '👤'}</span>
+              <span className="max-w-[80px] sm:max-w-[110px] truncate">{currentUser?.name || 'Sign In'}</span>
+            </button>
+
+            {/* Connection Settings */}
             <button
               onClick={() => setShowConfigModal(true)}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 text-xs transition-colors"
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-slate-200 text-xs transition-colors"
               title="Configure Backend WebSocket Server URL"
             >
-              <span className={`h-2 w-2 rounded-full ${connected ? 'bg-emerald-400' : 'bg-amber-400 animate-ping'}`} />
-              <span className="hidden sm:inline">Settings</span>
+              <span>⚙️</span>
             </button>
 
             <button
@@ -133,6 +165,15 @@ export const App: React.FC = () => {
           </div>
         </div>
       </header>
+
+      {/* User Authentication & Profile Modal */}
+      <AuthModal />
+
+      {/* Chat History Drawer (Partitioned by User ID) */}
+      <ChatHistoryDrawer
+        isOpen={isHistoryOpen}
+        onClose={() => setIsHistoryOpen(false)}
+      />
 
       {/* Connection Config Modal */}
       {showConfigModal && (

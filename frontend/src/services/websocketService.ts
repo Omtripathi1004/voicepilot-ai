@@ -1,6 +1,7 @@
 // VoicePilot AI — WebSocket Service
 // Handles connection, message routing, and reconnection logic.
 import { useConversationStore } from '../state/conversationStore';
+import { useAuthStore } from '../state/authStore';
 import type { WsMessage, ConversationTurn, ObservabilityEvent } from '../types';
 
 class WebSocketService {
@@ -234,12 +235,16 @@ class WebSocketService {
       generation_id: genId,
     });
 
-    // Comprehensive Natural Language Math Parser
+    // Conversational Intelligence Engine
     let toolUsed: string | null = null;
     let toolResult: string | null = null;
-    let reply = "I understand your voice request. Processing with generation-fenced Rime speech architecture.";
+    let reply = '';
 
-    const lower = text.toLowerCase();
+    const lower = text.toLowerCase().trim();
+    const userProfile = useAuthStore.getState().currentUser;
+    const userName = userProfile?.name || 'Commander';
+
+    // 1. Math normalization & calculation
     let norm = lower;
     if (norm.includes('multiply') || norm.includes('multiplication') || norm.includes('product')) {
       norm = norm.replace(/(\d+)\s*(?:and|by|with|\*|x)\s*(\d+)/gi, '$1 * $2');
@@ -256,11 +261,7 @@ class WebSocketService {
 
     const mathMatch = norm.match(/(\d+(?:\.\d+)?(?:\s*[\+\-\*\/\^x]\s*\d+(?:\.\d+)?)+)/);
 
-    if (lower.includes('time') || lower.includes('clock')) {
-      toolUsed = 'clock_tool';
-      toolResult = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      reply = `The current time is ${toolResult}.`;
-    } else if (mathMatch) {
+    if (mathMatch) {
       try {
         const rawExpr = mathMatch[1].replace(/x/g, '*').trim();
         const sanitized = rawExpr.replace(/[^0-9\+\-\*\/\.\s\(\)]/g, '');
@@ -273,10 +274,44 @@ class WebSocketService {
       } catch (err) {
         console.warn('Math eval failed:', err);
       }
-    } else if (lower.includes('hello') || lower.includes('hi')) {
-      reply = "Hello! I am VoicePilot, your real-time interruptible AI voice assistant. Ask me to calculate expressions like 62 times 265, set timers, or test interruptions!";
-    } else if (lower.includes('who are you') || lower.includes('what are you')) {
-      reply = "I am VoicePilot AI, a low-latency voice-native assistant powered by Rime TTS streaming synthesis and instant barge-in recovery.";
+    } else if (lower.includes('time') || lower.includes('clock')) {
+      toolUsed = 'clock_tool';
+      toolResult = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      reply = `The current time is ${toolResult}.`;
+    } else if (lower.includes('date') || lower.includes('day is today') || lower.includes('what day')) {
+      toolUsed = 'calendar_tool';
+      const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+      reply = `Today is ${today}.`;
+    } else if (/^(hi|hello|hey|good morning|good afternoon|good evening)\b/i.test(lower)) {
+      reply = `Hello ${userName}! How can I help you today? You can ask me to calculate equations, test voice interruptions, or explore Rime voices.`;
+    } else if (lower.includes('who are you') || lower.includes('what are you') || lower.includes('your name')) {
+      reply = `I am VoicePilot AI, a low-latency voice agent built on Rime TTS. I specialize in streaming speech synthesis and instant barge-in recovery.`;
+    } else if (lower.includes('how are you') || lower.includes("how's it going")) {
+      reply = `I'm operating at peak performance with sub-150ms audio latency! What would you like to explore together?`;
+    } else if (lower.includes('my name') || lower.includes('who am i')) {
+      reply = `You are signed in as ${userName}, with user ID ${userProfile?.id || 'pilot_user'}. All your conversation history is safely stored under your profile.`;
+    } else if (lower.includes('rime') || lower.includes('tts')) {
+      reply = `Rime TTS is our core speech engine. It features the ultra-fast Mist model with sub-100ms time-to-first-audio, as well as the expressive Arcana model for cinematic narration.`;
+    } else if (lower.includes('interrupt') || lower.includes('barge in') || lower.includes('fencing')) {
+      reply = `Our barge-in system uses monotonic generation fencing. When you speak mid-sentence, the active audio generation is cancelled immediately and the new generation takes over with zero audio bleed. Try hitting the space bar while I talk!`;
+    } else if (lower.includes('joke') || lower.includes('funny')) {
+      reply = `Why did the speech synthesizer break up with the grammar checker? Because it couldn't handle the pauses!`;
+    } else if (lower.includes('weather')) {
+      reply = `I don't have access to your live geolocation, but it's always a clear sky inside VoicePilot Cockpit!`;
+    } else if (lower.includes('thank') || lower.includes('appreciate')) {
+      reply = `You're very welcome, ${userName}! Feel free to keep the conversation going or try another voice persona.`;
+    } else if (lower.includes('help') || lower.includes('what can you do')) {
+      reply = `I can calculate complex math expressions, track elapsed timers, test Rime phonetic normalization, record conversation telemetry, and demonstrate real-time barge-in recovery.`;
+    } else if (lower.length < 5 || /^(ok|okay|yes|yeah|sure|cool|alright|nice)$/i.test(lower)) {
+      reply = `Understood. What would you like to discuss next?`;
+    } else {
+      // Dynamic conversational continuation
+      const responses = [
+        `That's an interesting point about "${text}". What aspects would you like to dive deeper into?`,
+        `I hear you. When looking at "${text}", there are several interesting directions to explore. How would you like to proceed?`,
+        `Got it! Let's explore that further. Could you tell me more about what you'd like to achieve?`,
+      ];
+      reply = responses[Math.floor(Math.random() * responses.length)];
     }
 
     if (toolUsed) {

@@ -110,14 +110,17 @@ export function useVoiceRecorder(options: UseVoiceRecorderOptions = {}) {
     recognition.lang = 'en-US';
     recognition.maxAlternatives = 1;
 
+    let pendingSpeech = '';
+    let speechTimer: ReturnType<typeof setTimeout> | null = null;
+
     recognition.onresult = (event: SpeechRecognitionEvent) => {
       let interim = '';
-      let final = '';
+      let currentFinal = '';
 
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const result = event.results[i];
         if (result.isFinal) {
-          final += result[0].transcript;
+          currentFinal += result[0].transcript;
         } else {
           interim += result[0].transcript;
         }
@@ -125,16 +128,31 @@ export function useVoiceRecorder(options: UseVoiceRecorderOptions = {}) {
 
       setInterimTranscript(interim);
 
-      if (final) {
-        const text = final.trim();
-        setTranscript(text);
-        setInterimTranscript('');
-        if (text) {
-          options.onTranscript?.(text);
-          const wasInterrupted = store.status === 'INTERRUPTED';
-          wsService.sendUserSpeech(text, wasInterrupted);
-        }
+      if (currentFinal) {
+        pendingSpeech += (pendingSpeech ? ' ' : '') + currentFinal.trim();
       }
+
+      // Reset debounce timer on any new speech input
+      if (speechTimer) clearTimeout(speechTimer);
+
+      // Debounce: Wait 750ms of quiet before sending the finalized speech
+      speechTimer = setTimeout(() => {
+        const fullText = (pendingSpeech || interim).trim();
+        pendingSpeech = '';
+
+        // Ignore short filler noise like "um", "uh", or single characters
+        if (fullText.length >= 2 && !/^(uh|um|er|ah)$/i.test(fullText)) {
+          setTranscript(fullText);
+          setInterimTranscript('');
+          const wasInterrupted = store.status === 'INTERRUPTED';
+
+          if (options.onTranscript) {
+            options.onTranscript(fullText);
+          } else {
+            wsService.sendUserSpeech(fullText, wasInterrupted);
+          }
+        }
+      }, 750);
     };
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
@@ -143,6 +161,7 @@ export function useVoiceRecorder(options: UseVoiceRecorderOptions = {}) {
     };
 
     recognition.onend = () => {
+      if (speechTimer) clearTimeout(speechTimer);
       if (isListeningRef.current && options.autoRestart !== false) {
         // Auto-restart for continuous listening
         setTimeout(() => {
