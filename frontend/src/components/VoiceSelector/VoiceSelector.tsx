@@ -47,22 +47,12 @@ export const VoiceSelector: React.FC = () => {
     const voiceId = match ? match.voice_id : selectedVoice;
     setSelectedVoice(voiceId);
 
-    wsService.send({
-      type: 'update_voice',
-      model: modelId,
-      voice: voiceId,
-      language: rimeConfig?.language || 'eng',
-    });
+    wsService.sendUpdateVoice(modelId, voiceId, rimeConfig?.language || 'eng');
   };
 
   const handleVoiceChange = (voiceId: string) => {
     setSelectedVoice(voiceId);
-    wsService.send({
-      type: 'update_voice',
-      model: selectedModel,
-      voice: voiceId,
-      language: rimeConfig?.language || 'eng',
-    });
+    wsService.sendUpdateVoice(selectedModel, voiceId, rimeConfig?.language || 'eng');
   };
 
   const handlePreview = async (voice: VoiceEntry) => {

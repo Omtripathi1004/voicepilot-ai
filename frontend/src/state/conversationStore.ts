@@ -1,5 +1,6 @@
 // VoicePilot AI — Global Application State (Zustand)
 import { create } from 'zustand';
+import { wsService } from '../services/websocketService';
 import { useAuthStore } from './authStore';
 import type {
   ConversationStatus,
@@ -187,16 +188,27 @@ export const useConversationStore = create<ConversationStore>((set, get) => ({
     set({ wsUrl: url });
   },
 
-  reset: () => set({
-    turns: [],
-    status: 'IDLE',
-    events: [],
-    activeTools: [],
-    toolHistory: [],
-    acceptanceResult: null,
-    lastTurnMetrics: null,
-    interruptionCount: 0,
-    staleRejectionCount: 0,
-    ttfaHistory: [],
-  }),
+  reset: () => {
+    // Cancel ALL in-flight speech, simulation timers, and audio playback
+    wsService.cancelAll();
+
+    set({
+      turns: [],
+      status: 'IDLE',
+      events: [],
+      activeTools: [],
+      toolHistory: [],
+      acceptanceResult: null,
+      lastTurnMetrics: null,
+      interruptionCount: 0,
+      staleRejectionCount: 0,
+      ttfaHistory: [],
+      isPlaying: false,
+      isDemoRunning: false,
+      currentGenerationId: null,
+      currentTurnId: null,
+      audioQueue: [],
+      currentAudioGenerationId: null,
+    });
+  },
 }));

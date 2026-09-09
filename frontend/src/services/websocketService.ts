@@ -80,6 +80,10 @@ class WebSocketService {
   sendInterrupt(): void {
     // Stop audio immediately
     this.stopAudioPlayback();
+    // Cancel browser speech synthesis
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.send({ type: 'interrupt' });
     } else {
@@ -630,6 +634,23 @@ class WebSocketService {
       this.audioContext = null;
     }
     useConversationStore.getState().setIsPlaying(false);
+  }
+
+  /**
+   * Cancel ALL in-flight activity: speech synthesis, simulation timeouts,
+   * audio playback. Called on session reset to prevent ghost speech/timers.
+   */
+  cancelAll(): void {
+    // 1. Stop browser speech synthesis immediately
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+
+    // 2. Clear all pending simulation timeouts
+    this.clearSimTimeouts();
+
+    // 3. Stop WebAudio playback
+    this.stopAudioPlayback();
   }
 
   get isConnected(): boolean {
