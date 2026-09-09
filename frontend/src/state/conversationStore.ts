@@ -72,16 +72,20 @@ interface ConversationStore {
   setDemoRunning: (v: boolean) => void;
   setIsPlaying: (v: boolean) => void;
   clearAudioQueue: () => void;
+  setWsUrl: (url: string) => void;
   reset: () => void;
 }
 
-const BACKEND_URL = (import.meta as any).env?.VITE_BACKEND_URL || 'http://localhost:8000';
-const WS_URL = BACKEND_URL.replace(/^http/, 'ws');
+const savedWsUrl = typeof window !== 'undefined' ? localStorage.getItem('vp_ws_url') : null;
+const envBackend = (import.meta as any).env?.VITE_BACKEND_URL || (import.meta as any).env?.VITE_API_URL;
+const defaultBackend = envBackend || 'http://localhost:8000';
+const defaultWs = (import.meta as any).env?.VITE_WS_URL || defaultBackend.replace(/^http/, 'ws') + '/ws/voice';
+const initialWsUrl = savedWsUrl || defaultWs;
 
 export const useConversationStore = create<ConversationStore>((set, get) => ({
   connected: false,
   sessionId: null,
-  wsUrl: `${WS_URL}/ws/voice`,
+  wsUrl: initialWsUrl,
 
   status: 'IDLE',
   turns: [],
@@ -172,6 +176,12 @@ export const useConversationStore = create<ConversationStore>((set, get) => ({
   setDemoRunning: (v) => set({ isDemoRunning: v }),
   setIsPlaying: (v) => set({ isPlaying: v }),
   clearAudioQueue: () => set({ audioQueue: [] }),
+  setWsUrl: (url: string) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('vp_ws_url', url);
+    }
+    set({ wsUrl: url });
+  },
 
   reset: () => set({
     turns: [],

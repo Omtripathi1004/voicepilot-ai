@@ -78,6 +78,21 @@ export const AgentConsole: React.FC = () => {
         <StatusIndicator />
       </div>
 
+      {/* Standalone Simulation Mode Notice Banner */}
+      {!connected && (
+        <div className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-950/40 via-violet-950/30 to-slate-900/50 border border-amber-500/30 text-xs">
+          <div className="flex items-center gap-2 text-amber-200">
+            <span>✨</span>
+            <span>
+              <strong>Standalone Interactive Mode:</strong> Real-time voice simulation, barge-in interruption, and generation fencing are fully active in your browser. Click <strong>Quick Demo</strong> above to test!
+            </span>
+          </div>
+          <span className="hidden sm:inline text-[11px] text-slate-400 font-mono">
+            Zero setup required
+          </span>
+        </div>
+      )}
+
       {/* Main Grid: Left Stage (Voice & Transcript), Right Telemetry (Tools, Metrics, Voice Config) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Column (7 cols): Active Audio Interaction & Dialogue */}

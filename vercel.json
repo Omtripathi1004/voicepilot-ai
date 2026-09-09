@@ -1,17 +1,10 @@
 {
-  "framework": "vite",
-  "root": "frontend",
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
-  "installCommand": "npm install",
+  "buildCommand": "cd frontend && npm install && npm run build",
+  "outputDirectory": "frontend/dist",
   "rewrites": [
     {
       "source": "/(.*)",
       "destination": "/index.html"
     }
-  ],
-  "env": {
-    "VITE_WS_URL": "@vite_ws_url",
-    "VITE_API_URL": "@vite_api_url"
-  }
+  ]
 }

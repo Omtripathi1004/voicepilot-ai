@@ -24,11 +24,24 @@ export const App: React.FC = () => {
     };
   }, []);
 
+  const [showConfigModal, setShowConfigModal] = useState(false);
+  const wsUrl = useConversationStore((s) => s.wsUrl);
+  const setWsUrl = useConversationStore((s) => s.setWsUrl);
+  const [customWsUrl, setCustomWsUrl] = useState(wsUrl);
+
   const handleRunDemo = () => {
-    setDemoRunning(true);
-    wsService.send({ type: 'start_demo' });
     setActiveTab('console');
-    setTimeout(() => setDemoRunning(false), 8000);
+    wsService.sendDemoStart();
+  };
+
+  const handleSaveConnection = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (customWsUrl.trim()) {
+      setWsUrl(customWsUrl.trim());
+      wsService.disconnect();
+      wsService.connect(customWsUrl.trim());
+      setShowConfigModal(false);
+    }
   };
 
   const navTabs: Array<{ id: Tab; label: string; icon: string; badge?: string }> = [
@@ -93,12 +106,21 @@ export const App: React.FC = () => {
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-all ${
                 isDemoRunning
                   ? 'bg-amber-950/40 border-amber-500/50 text-amber-300 animate-pulse'
-                  : 'bg-slate-900 hover:bg-slate-800 border-slate-700/60 text-slate-300'
+                  : 'bg-gradient-to-r from-violet-600 to-brand-600 hover:brightness-110 text-white shadow-md shadow-brand-600/20 border-violet-500/40'
               }`}
-              title="Runs an automatic scripted interruption demo"
+              title="Runs an automatic real-time interruption demo"
             >
               <span>🎬</span>
               <span>{isDemoRunning ? 'Running Demo...' : 'Quick Demo'}</span>
+            </button>
+
+            <button
+              onClick={() => setShowConfigModal(true)}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 text-xs transition-colors"
+              title="Configure Backend WebSocket Server URL"
+            >
+              <span className={`h-2 w-2 rounded-full ${connected ? 'bg-emerald-400' : 'bg-amber-400 animate-ping'}`} />
+              <span className="hidden sm:inline">Settings</span>
             </button>
 
             <button
@@ -111,6 +133,69 @@ export const App: React.FC = () => {
           </div>
         </div>
       </header>
+
+      {/* Connection Config Modal */}
+      {showConfigModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl flex flex-col gap-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <span>⚙️</span> Backend Connection Settings
+              </h3>
+              <button
+                onClick={() => setShowConfigModal(false)}
+                className="text-slate-400 hover:text-white text-lg font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-400 leading-relaxed">
+              VoicePilot AI connects via duplex WebSocket. When hosted on Vercel, you can connect to your local backend, Docker container, or deployed cloud server (e.g., Railway/Render).
+            </p>
+
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs">
+              <span className="text-slate-400">Current Status:</span>
+              <span className={`font-semibold ${connected ? 'text-emerald-400' : 'text-amber-400'}`}>
+                {connected ? '● Live Backend Connected' : '● Standalone Simulation Mode Active'}
+              </span>
+            </div>
+
+            <form onSubmit={handleSaveConnection} className="flex flex-col gap-3">
+              <div>
+                <label className="block text-xs font-medium text-slate-300 mb-1">
+                  WebSocket Server Endpoint:
+                </label>
+                <input
+                  type="text"
+                  value={customWsUrl}
+                  onChange={(e) => setCustomWsUrl(e.target.value)}
+                  placeholder="wss://your-backend.railway.app/ws/voice"
+                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs font-mono text-white focus:outline-none focus:border-brand-500"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCustomWsUrl('ws://localhost:8000/ws/voice');
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] text-slate-300"
+                >
+                  Set Localhost
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 font-semibold text-xs text-white shadow-md shadow-brand-600/30"
+                >
+                  Save & Connect
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Main Tab View Content */}
       <main className="flex-1 flex flex-col">
