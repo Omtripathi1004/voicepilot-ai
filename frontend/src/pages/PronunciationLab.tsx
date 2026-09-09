@@ -9,8 +9,17 @@ interface Fixture {
   notes: string;
 }
 
+const DEFAULT_FIXTURES: Fixture[] = [
+  { id: 'fix_currency', category: 'Currencies', text: 'The flight from SFO to JFK cost $1,249.50 with a €45 handling fee.', notes: 'Tests currency signs ($ and €), comma separation, and decimal cents.' },
+  { id: 'fix_acronyms', category: 'Acronyms', text: 'NASA deployed the new LiDAR system in cooperation with ESA and JAXA.', notes: 'Tests standard acronym pronunciation and letter-by-letter expansion.' },
+  { id: 'fix_dates_times', category: 'Dates & Times', text: 'The quarterly review is scheduled for March 15th, 2026 at 4:30 PM EST.', notes: 'Tests ordinal dates, years, and 12-hour AM/PM formatting.' },
+  { id: 'fix_addresses', category: 'Addresses & Codes', text: 'Deliver the package to 742 Evergreen Terrace, Apt 4B, Springfield, OR 97477.', notes: 'Tests apartment numbers, street abbreviations, and five-digit postal codes.' },
+  { id: 'fix_medical', category: 'Medical & Tech', text: 'Administer 250mg of amoxicillin every 8 hours for acute otitis media.', notes: 'Tests scientific metric units (mg) and pharmacological nomenclature.' },
+  { id: 'fix_math_phonetic', category: 'Mathematical', text: 'Sixty-two multiplied by two hundred sixty-five equals sixteen thousand four hundred thirty.', notes: 'Tests spoken phonetic rendering of large multiplication arithmetic.' },
+];
+
 export const PronunciationLab: React.FC = () => {
-  const [fixtures, setFixtures] = useState<Fixture[]>([]);
+  const [fixtures, setFixtures] = useState<Fixture[]>(DEFAULT_FIXTURES);
   const [loading, setLoading] = useState(false);
   const [customText, setCustomText] = useState('');
   const [activeFixtureId, setActiveFixtureId] = useState<string | null>(null);
@@ -23,10 +32,10 @@ export const PronunciationLab: React.FC = () => {
     fetch(`${backendUrl}/pronunciation/fixtures`)
       .then((res) => res.json())
       .then((data) => {
-        if (data.fixtures) setFixtures(data.fixtures);
+        if (data.fixtures && data.fixtures.length > 0) setFixtures(data.fixtures);
       })
       .catch((err) => {
-        console.warn('Failed to load fixtures via REST:', err);
+        console.info('[PronunciationLab] Backend offline, using built-in phonetic fixtures');
       })
       .finally(() => setLoading(false));
   }, []);
@@ -63,20 +72,14 @@ export const PronunciationLab: React.FC = () => {
 
   const handleTestFixture = (fixture: Fixture) => {
     setActiveFixtureId(fixture.id);
-    wsService.send({
-      type: 'pronunciation_test',
-      fixture_id: fixture.id,
-    });
+    wsService.sendPronunciationTest(fixture.id, fixture.text);
   };
 
   const handleTestCustom = (e: React.FormEvent) => {
     e.preventDefault();
     if (!customText.trim()) return;
     setActiveFixtureId('custom');
-    wsService.send({
-      type: 'pronunciation_test',
-      text: customText.trim(),
-    });
+    wsService.sendPronunciationTest('custom', customText.trim());
   };
 
   return (

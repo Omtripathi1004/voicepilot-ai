@@ -40,6 +40,35 @@ class AgentResponse:
         self.speech_text = prepare_for_speech(text)
 
 
+def _parse_math_expression(text: str) -> Optional[str]:
+    """Parse arithmetic expressions from natural language queries."""
+    lower = text.lower()
+    if any(w in lower for w in ["multiply", "multiplication", "product"]):
+        lower = re.sub(r"(\d+)\s*(?:and|by|with|\*|x)\s*(\d+)", r"\1 * \2", lower)
+    lower = re.sub(r"\bmultiplication of\b", "", lower)
+    lower = re.sub(r"\bproduct of\b", "", lower)
+    lower = re.sub(r"\bmultiply\b", "", lower)
+    lower = re.sub(r"\bmultiplied by\b", "*", lower)
+    lower = re.sub(r"\btimes\b", "*", lower)
+    lower = re.sub(r"\bdivided by\b", "/", lower)
+    lower = re.sub(r"\bplus\b", "+", lower)
+    lower = re.sub(r"\bminus\b", "-", lower)
+
+    # Search for arithmetic pattern like 62 * 265
+    m = re.search(r"(\d+(?:\.\d+)?(?:\s*[\+\-\*\/\^x]\s*\d+(?:\.\d+)?)+)", lower)
+    if m:
+        return m.group(1).replace("x", "*").strip()
+
+    # Also check keyword-prefixed expressions
+    kw_match = re.search(r"(?:calculate|compute|what is|solve|eval)\s+([0-9\s\+\-\*\/\(\)\.\^x]+)", lower)
+    if kw_match:
+        expr = kw_match.group(1).replace("x", "*").strip()
+        if any(op in expr for op in ["+", "-", "*", "/", "^"]):
+            return expr
+
+    return None
+
+
 def _extract_tool_intent(user_text: str) -> Optional[Tuple[str, Dict]]:
     """
     Simple intent/entity extraction to map natural language to tools.
@@ -48,24 +77,9 @@ def _extract_tool_intent(user_text: str) -> Optional[Tuple[str, Dict]]:
     lower = user_text.lower()
 
     # Calculator
-    calc_patterns = [
-        r"(?:calculate|compute|what is|solve|eval)\s+(.+)",
-        r"(\d[\d\s\+\-\*\/\(\)\.\^]+\d)",
-    ]
-    for pattern in calc_patterns:
-        m = re.search(pattern, lower)
-        if m:
-            raw_expr = m.group(1).strip()
-            expr = (
-                raw_expr.replace("times", "*")
-                .replace("multiplied by", "*")
-                .replace("plus", "+")
-                .replace("minus", "-")
-                .replace("divided by", "/")
-                .replace("x", "*")
-            )
-            if any(op in expr for op in ["+", "-", "*", "/", "^", "sqrt"]):
-                return ("calculator", {"expression": expr})
+    math_expr = _parse_math_expression(user_text)
+    if math_expr:
+        return ("calculator", {"expression": math_expr})
 
     # Timer
     timer_patterns = [
