@@ -157,14 +157,65 @@ voicepilot-ai/
 
 ---
 
+## 🏷️ Exact Rime Specification & Configuration
+
+VoicePilot AI adheres strictly to Rime's live production configurations:
+
+| Parameter | Specification & Value |
+|---|---|
+| **Model IDs** | `mist` (default, ~75ms TTFA conversational) & `arcana` (cinematic expressivity) |
+| **Speaker Personas** | `amber` (Flagship Female), `marsh` (Conversational Male), `crest` (Authoritative Male), `glade` (Gentle Female), `bayou` (Expressive Male), `haven` (Cinematic Female), `echo` (Multilingual) |
+| **Languages** | `eng` (English), `spa` (Spanish), `fra` (French), `deu` (German) |
+| **Streaming Endpoint** | `https://users.rime.ai/v1/rime-tts` |
+| **Catalog Discovery** | `https://users.rime.ai/data/voices/all-v2.json` & `https://users.rime.ai/data/voices/voice_details.json` (Keyless public URLs) |
+| **Audio Format** | 24,000 Hz Linear 16-bit PCM streaming (or MP3 container for browser playback) |
+| **Transport** | Full-duplex WebSocket (`ws://` / `wss://` at `/ws/audio`) with binary audio chunk streaming & JSON generation fencing |
+
+---
+
+## 🔌 Third-Party Services
+
+1. **Rime TTS Cloud API**: Primary acoustic synthesis engine for streaming low-latency voice and live voice catalog discovery.
+2. **Web Speech API**: Client-side Speech-to-Text (STT) and voice persona fallback rendering.
+3. **Optional LLM Backends**: OpenAI / Anthropic / Gemini integration for open-domain reasoning (local rule & CS knowledge engine active by default).
+
+---
+
+## ⚠️ Known Limitations
+
+1. **Browser Speech Recognition**: Web Speech API requires user microphone permission and works best in Chromium-based browsers (Google Chrome, Microsoft Edge, Brave) and Safari.
+2. **Microphone Hardware Quality**: Unfiltered laptop speakers without headphones can occasionally cause acoustic bleed if volume is set to maximum (mitigated by our client-side acoustic echo suppression).
+3. **API Rate Limits**: Cloud Rime TTS endpoints are subject to tier concurrency limits.
+
+---
+
+## 🛡️ Failure Behavior & Resilience
+
+1. **Rime API Key Missing or Service Unreachable**:
+   - The application does NOT crash.
+   - It seamlessly engages the local resilient voice synthesizer.
+   - The UI clearly discloses this state via the **"Offline / Demo Synthesizer"** badge in the header and status bar.
+2. **Mid-Speech Interruption (Barge-In)**:
+   - When the user speaks mid-sentence, the active `asyncio` task is cancelled.
+   - Audio buffer playback ceases immediately (<30ms).
+   - Monotonic generation fencing increments `gen-N` to `gen-(N+1)`. Late or out-of-order audio chunks are strictly discarded.
+3. **Long-Running Tool Cancellation**:
+   - If an async tool (e.g. calculator or lookup) is in progress when an interruption occurs, the cancellation event halts the tool execution before its results can pollute the revised conversation.
+4. **Network Reconnection**:
+   - WebSocket automatically attempts exponential backoff reconnection upon network drops.
+
+---
+
 ## 🔒 Configuration (`.env`)
 
 | Variable | Description | Default |
 |---|---|---|
-| `RIME_API_KEY` | Optional. Your Rime TTS API Key. If unset, the simulator runs automatically. | `""` |
+| `RIME_API_KEY` | Optional. Your Rime TTS API Key. If unset, the resilient simulator runs automatically. | `""` |
 | `RIME_MODEL_ID` | Default Rime model (`mist` or `arcana`). | `mist` |
-| `RIME_VOICE` | Default voice persona (`amber`, `marcus`, `allison`, etc.). | `amber` |
-| `OPENAI_API_KEY` | Optional. Used for LLM text reasoning. Local rule engine used if unset. | `""` |
+| `RIME_VOICE` | Default voice persona (`amber`, `marsh`, `crest`, etc.). | `amber` |
+| `RIME_LANGUAGE` | Default language code (`eng`, `spa`, etc.). | `eng` |
+| `RIME_ENDPOINT` | Rime streaming endpoint. | `https://users.rime.ai/v1/rime-tts` |
+| `RIME_AUDIO_FORMAT`| Audio output container (`pcm` or `mp3`). | `mp3` |
 | `PORT` | Backend server port. | `8000` |
 
 ---
