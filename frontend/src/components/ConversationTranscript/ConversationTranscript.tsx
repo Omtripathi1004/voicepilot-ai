@@ -58,7 +58,7 @@ export const ConversationTranscript: React.FC = () => {
                 <span className="font-mono text-brand-400/80 text-[10px]">{turn.generationId}</span>
                 <span>•</span>
                 <span>
-                  {new Date(turn.timestamp).toLocaleTimeString([], {
+                  {new Date(turn.timestamp < 1e12 ? turn.timestamp * 1000 : turn.timestamp).toLocaleTimeString([], {
                     hour: '2-digit',
                     minute: '2-digit',
                     second: '2-digit',

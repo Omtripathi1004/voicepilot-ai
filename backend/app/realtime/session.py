@@ -429,7 +429,7 @@ class VoiceSession:
 
     async def _handle_update_voice(self, msg: Dict):
         """Update Rime voice configuration."""
-        model = msg.get("model", self.state.model)
+        model = msg.get("model") or msg.get("model_id") or self.state.model
         voice = msg.get("voice", self.state.voice)
         language = msg.get("language", self.state.language)
 

@@ -49,8 +49,9 @@ export const VoiceSelector: React.FC = () => {
 
     wsService.send({
       type: 'update_voice',
-      model_id: modelId,
+      model: modelId,
       voice: voiceId,
+      language: rimeConfig?.language || 'eng',
     });
   };
 
@@ -58,8 +59,9 @@ export const VoiceSelector: React.FC = () => {
     setSelectedVoice(voiceId);
     wsService.send({
       type: 'update_voice',
-      model_id: selectedModel,
+      model: selectedModel,
       voice: voiceId,
+      language: rimeConfig?.language || 'eng',
     });
   };
 
