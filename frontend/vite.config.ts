@@ -1,8 +1,9 @@
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
+import process from 'node:process'
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, (typeof process !== 'undefined' && process.cwd) ? process.cwd() : '.')
+  const env = loadEnv(mode, process.cwd())
   const backendUrl = env.VITE_BACKEND_URL || 'http://localhost:8000'
 
   return {
@@ -13,7 +14,6 @@ export default defineConfig(({ mode }) => {
         '/api': {
           target: backendUrl,
           changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api/, ''),
         },
       },
     },
