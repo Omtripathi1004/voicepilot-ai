@@ -54,24 +54,17 @@ class RimeConfig:
         }
 
 
-def _generate_mock_audio(text: str, duration_seconds: float = 1.5) -> bytes:
+def _generate_mock_audio(text: str, duration_seconds: float = 0.5) -> bytes:
     """
-    Generate a WAV-format mock audio tone for development when RIME_API_KEY
-    is not configured. The tone frequency encodes text length as a visual cue.
-    This is clearly labeled as mock and only used when Rime is unconfigured.
+    Generate a silent WAV-format mock audio buffer for development when RIME_API_KEY
+    is not configured. Does not emit harsh sine-wave beep tones.
+    Speech synthesis is handled via browser voice personas.
     """
     sample_rate = 22050
-    frequency = 440 + (len(text) % 20) * 10  # tone varies by text length
     num_samples = int(sample_rate * duration_seconds)
 
-    samples = []
-    for i in range(num_samples):
-        # Sine wave with fade in/out
-        t = i / sample_rate
-        fade = min(t, duration_seconds - t, 0.1) / 0.1
-        fade = max(0.0, min(1.0, fade))
-        sample = int(32767 * 0.3 * fade * math.sin(2 * math.pi * frequency * t))
-        samples.append(sample)
+    # Silent PCM samples (0)
+    samples = [0] * num_samples
 
     # Build WAV file
     buf = io.BytesIO()

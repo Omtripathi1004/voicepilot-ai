@@ -13,6 +13,22 @@ class WebSocketService {
   private audioBufferQueue: AudioBuffer[] = [];
   private isPlayingAudio = false;
   private currentAudioGenId: string | null = null;
+  private activeUtterance: SpeechSynthesisUtterance | null = null;
+  private cachedVoices: SpeechSynthesisVoice[] = [];
+
+  constructor() {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      const load = () => {
+        try {
+          this.cachedVoices = window.speechSynthesis.getVoices();
+        } catch (e) {
+          // ignore
+        }
+      };
+      load();
+      window.speechSynthesis.onvoiceschanged = load;
+    }
+  }
 
   connect(url?: string): void {
     const store = useConversationStore.getState();
@@ -128,7 +144,7 @@ class WebSocketService {
   }
 
   sendUpdateVoice(model: string, voice: string, language: string): void {
-    // Update store state immediately in all cases so UI and local synthesizer stay in sync
+    const isMock = useConversationStore.getState().isMock;
     useConversationStore.getState().setRimeConfig(
       {
         model_id: model,
@@ -139,7 +155,7 @@ class WebSocketService {
         region: 'us-east',
         provider: 'rime',
       },
-      !this.isConnected
+      isMock
     );
 
     if (this.ws?.readyState === WebSocket.OPEN) {
@@ -498,9 +514,25 @@ class WebSocketService {
           timestamp: Date.now() / 1000,
           toolName: msg.tool_name as string | undefined,
         });
+
+        // When in mock / unkeyed mode, speak the assistant reply using browser SpeechSynthesis
+        // with the active voice persona so the user hears spoken voice rather than silence or beeps!
+        if (store.isMock) {
+          store.setStatus('SPEAKING');
+          store.setIsPlaying(true);
+          const speechText = (msg.speech_text as string) || (msg.text as string);
+          this.speakWithVoicePersona(speechText, () => {
+            store.setIsPlaying(false);
+            store.setStatus('IDLE');
+          });
+        }
         break;
 
       case 'audio_chunk':
+        // If in mock mode, DO NOT play mock sine wave beeps! Browser SpeechSynthesis speaks the voice.
+        if (store.isMock) {
+          return;
+        }
         // Play audio chunk — check generation before queuing
         const currentGen = store.currentGenerationId;
         if (msg.generation_id === currentGen || !currentGen) {
@@ -670,25 +702,43 @@ class WebSocketService {
    * (Male vs Female voice matching and pitch modulation so that male voices sound deep/masculine
    * and female voices sound articulate/feminine across all browsers).
    */
-  speakWithVoicePersona(text: string, onEnd?: () => void): void {
+  speakWithVoicePersona(
+    text: string,
+    onEnd?: () => void,
+    targetVoiceId?: string,
+    targetGender?: 'Male' | 'Female'
+  ): void {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
       if (onEnd) onEnd();
       return;
     }
 
-    window.speechSynthesis.cancel();
+    try {
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+      }
+      window.speechSynthesis.cancel();
+    } catch (e) {
+      // ignore
+    }
+
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 1.0;
+    this.activeUtterance = utterance;
 
     const store = useConversationStore.getState();
-    const voiceId = (store.rimeConfig?.voice || 'amber').toLowerCase();
+    const activeVoiceId = (targetVoiceId || store.rimeConfig?.voice || 'amber').toLowerCase();
 
     // Determine gender based on known Rime voice personas
-    const isMale = ['marsh', 'crest', 'bayou', 'marcus', 'david', 'james', 'male'].some((m) =>
-      voiceId.includes(m)
-    );
+    const isMale =
+      targetGender === 'Male' ||
+      (targetGender !== 'Female' &&
+        ['marsh', 'crest', 'bayou', 'marcus', 'david', 'james', 'male', 'guy', 'mark'].some((m) =>
+          activeVoiceId.includes(m)
+        ));
 
-    const voices = window.speechSynthesis.getVoices();
+    const voices =
+      this.cachedVoices.length > 0 ? this.cachedVoices : window.speechSynthesis.getVoices();
+
     if (voices && voices.length > 0) {
       if (isMale) {
         // Find best male voice available in system
@@ -705,52 +755,72 @@ class WebSocketService {
                 name.includes('richard') ||
                 name.includes('male') ||
                 name.includes('microsoft david') ||
+                name.includes('microsoft mark') ||
+                name.includes('microsoft george') ||
                 name.includes('google us english male')) &&
               !name.includes('female') &&
-              !name.includes('zira')
+              !name.includes('zira') &&
+              !name.includes('hazel')
             );
           }) ||
           voices.find(
-            (v) => !v.name.toLowerCase().includes('zira') && !v.name.toLowerCase().includes('female')
+            (v) =>
+              !v.name.toLowerCase().includes('zira') &&
+              !v.name.toLowerCase().includes('female') &&
+              !v.name.toLowerCase().includes('hazel')
           );
 
         if (maleVoice) {
           utterance.voice = maleVoice;
         }
         // Deep masculine pitch modulation
-        utterance.pitch = 0.78;
+        utterance.pitch = 0.82;
+        utterance.rate = 1.0;
       } else {
         // Find best female voice
-        const femaleVoice = voices.find((v) => {
-          const name = v.name.toLowerCase();
-          return (
-            name.includes('zira') ||
-            name.includes('samantha') ||
-            name.includes('victoria') ||
-            name.includes('karen') ||
-            name.includes('female') ||
-            name.includes('google us english')
-          );
-        });
+        const femaleVoice =
+          voices.find((v) => {
+            const name = v.name.toLowerCase();
+            return (
+              name.includes('zira') ||
+              name.includes('hazel') ||
+              name.includes('samantha') ||
+              name.includes('victoria') ||
+              name.includes('karen') ||
+              name.includes('female') ||
+              name.includes('google us english')
+            );
+          }) || voices.find((v) => v.lang.startsWith('en'));
 
         if (femaleVoice) {
           utterance.voice = femaleVoice;
         }
         // Feminine pitch modulation
-        utterance.pitch = 1.15;
+        utterance.pitch = 1.12;
+        utterance.rate = 1.0;
       }
     } else {
-      utterance.pitch = isMale ? 0.78 : 1.15;
+      utterance.pitch = isMale ? 0.82 : 1.12;
+      utterance.rate = 1.0;
     }
 
     utterance.onend = () => {
+      this.activeUtterance = null;
       if (onEnd) onEnd();
     };
     utterance.onerror = () => {
+      this.activeUtterance = null;
       if (onEnd) onEnd();
     };
 
-    window.speechSynthesis.speak(utterance);
+    setTimeout(() => {
+      try {
+        window.speechSynthesis.speak(utterance);
+      } catch (err) {
+        console.error('[SpeechSynthesis] speak error:', err);
+        if (onEnd) onEnd();
+      }
+    }, 25);
   }
 
   get isConnected(): boolean {

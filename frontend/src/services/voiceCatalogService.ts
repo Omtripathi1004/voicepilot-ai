@@ -15,14 +15,17 @@ export interface VoiceEntry {
 
 const BACKEND_URL = (import.meta as any).env?.VITE_BACKEND_URL || 'http://localhost:8000';
 
-const DEFAULT_VOICES: VoiceEntry[] = [
-  { voice_id: 'amber', model_id: 'mist', language: 'en', gender: 'Female', flagship: true, display_name: 'Amber (Flagship Natural)' },
-  { voice_id: 'marsh', model_id: 'mist', language: 'en', gender: 'Male', flagship: true, display_name: 'Marsh (Warm Conversational)' },
-  { voice_id: 'crest', model_id: 'mist', language: 'en', gender: 'Male', flagship: false, display_name: 'Crest (Crisp Authoritative)' },
-  { voice_id: 'glade', model_id: 'mist', language: 'en', gender: 'Female', flagship: false, display_name: 'Glade (Gentle Assistant)' },
-  { voice_id: 'bayou', model_id: 'arcana', language: 'en', gender: 'Male', flagship: true, display_name: 'Bayou (Arcana Expressive)' },
-  { voice_id: 'haven', model_id: 'arcana', language: 'en', gender: 'Female', flagship: true, display_name: 'Haven (Arcana Cinematic)' },
-  { voice_id: 'echo', model_id: 'mist', language: 'es', gender: 'Female', flagship: false, display_name: 'Echo (Spanish Multilingual)' },
+export const DEFAULT_VOICES: VoiceEntry[] = [
+  { voice_id: 'amber', model_id: 'mist', language: 'en', gender: 'Female', flagship: true, display_name: 'Amber (Flagship Natural - Female)' },
+  { voice_id: 'marsh', model_id: 'mist', language: 'en', gender: 'Male', flagship: true, display_name: 'Marsh (Warm Conversational - Male)' },
+  { voice_id: 'crest', model_id: 'mist', language: 'en', gender: 'Male', flagship: false, display_name: 'Crest (Crisp Authoritative - Male)' },
+  { voice_id: 'glade', model_id: 'mist', language: 'en', gender: 'Female', flagship: false, display_name: 'Glade (Gentle Assistant - Female)' },
+  { voice_id: 'luna', model_id: 'mist', language: 'en', gender: 'Female', flagship: false, display_name: 'Luna (Bright & Clear - Female)' },
+  { voice_id: 'marcus', model_id: 'mist', language: 'en', gender: 'Male', flagship: false, display_name: 'Marcus (Deep Executive - Male)' },
+  { voice_id: 'bayou', model_id: 'arcana', language: 'en', gender: 'Male', flagship: true, display_name: 'Bayou (Arcana Expressive - Male)' },
+  { voice_id: 'haven', model_id: 'arcana', language: 'en', gender: 'Female', flagship: true, display_name: 'Haven (Arcana Cinematic - Female)' },
+  { voice_id: 'david', model_id: 'arcana', language: 'en', gender: 'Male', flagship: false, display_name: 'David (Resonant Cinematic - Male)' },
+  { voice_id: 'echo', model_id: 'mist', language: 'es', gender: 'Female', flagship: false, display_name: 'Echo (Spanish Multilingual - Female)' },
 ];
 
 class VoiceCatalogServiceFrontend {
@@ -49,20 +52,8 @@ class VoiceCatalogServiceFrontend {
   }
 
   async getVoicesForModel(modelId: string): Promise<VoiceEntry[]> {
-    if (!this.voicesByModel[modelId]) {
-      try {
-        const res = await fetch(`${BACKEND_URL}/catalog/voices?model_id=${encodeURIComponent(modelId)}`);
-        const data = await res.json();
-        if (data.voices?.length) {
-          this.voicesByModel[modelId] = data.voices;
-        } else {
-          this.voicesByModel[modelId] = DEFAULT_VOICES.filter((v) => v.model_id === modelId);
-        }
-      } catch (e) {
-        this.voicesByModel[modelId] = DEFAULT_VOICES.filter((v) => v.model_id === modelId);
-      }
-    }
-    return this.voicesByModel[modelId];
+    const list = await this.fetchVoices();
+    return list.filter((v) => (v.model_id || 'mist').toLowerCase() === modelId.toLowerCase());
   }
 
   async getVoicesForModelAndLanguage(modelId: string, language: string): Promise<VoiceEntry[]> {
@@ -76,11 +67,37 @@ class VoiceCatalogServiceFrontend {
       const data = await res.json();
       const rawList = data.voices || [];
       if (rawList.length > 0) {
-        return rawList.map((v: any) =>
-          typeof v === 'string'
-            ? { voice_id: v, model_id: 'mist', language: 'en', display_name: v }
-            : v
-        );
+        // Map backend voices, preserving curated male/female metadata if matching
+        const defaultMap = new Map(DEFAULT_VOICES.map((v) => [v.voice_id.toLowerCase(), v]));
+        const enriched: VoiceEntry[] = [];
+        const seen = new Set<string>();
+
+        // Always put curated voices first
+        for (const cv of DEFAULT_VOICES) {
+          enriched.push(cv);
+          seen.add(cv.voice_id.toLowerCase());
+        }
+
+        // Add additional voices from backend
+        for (const item of rawList) {
+          const id = (typeof item === 'string' ? item : item.voice_id || item.id || '').toLowerCase();
+          if (!id || seen.has(id)) continue;
+          seen.add(id);
+
+          if (typeof item === 'string') {
+            const isMale = ['marsh', 'crest', 'bayou', 'marcus', 'david', 'james', 'male', 'guy', 'mark'].some((m) => id.includes(m));
+            enriched.push({
+              voice_id: item,
+              model_id: 'mist',
+              language: 'en',
+              gender: isMale ? 'Male' : 'Female',
+              display_name: `${item.charAt(0).toUpperCase() + item.slice(1)} (${isMale ? 'Male' : 'Female'})`,
+            });
+          } else {
+            enriched.push(item);
+          }
+        }
+        return enriched;
       }
       return DEFAULT_VOICES;
     } catch (e) {

@@ -43,46 +43,48 @@ export const VoiceSelector: React.FC = () => {
   const handleModelChange = (modelId: string) => {
     setSelectedModel(modelId);
     // Find matching voice for this model
-    const match = voices.find((v) => v.model_id.toLowerCase() === modelId.toLowerCase());
+    const match = voices.find((v) => (v.model_id || 'mist').toLowerCase() === modelId.toLowerCase());
     const voiceId = match ? match.voice_id : selectedVoice;
     setSelectedVoice(voiceId);
 
     wsService.sendUpdateVoice(modelId, voiceId, rimeConfig?.language || 'eng');
+
+    const entry = voices.find((v) => v.voice_id === voiceId);
+    const personaName = entry?.display_name || voiceId;
+    const gender = entry?.gender as ('Male' | 'Female' | undefined);
+    wsService.speakWithVoicePersona(
+      `Switched architecture to ${modelId === 'mist' ? 'Rime Mist' : 'Rime Arcana'}, using ${personaName}.`,
+      undefined,
+      voiceId,
+      gender
+    );
   };
 
   const handleVoiceChange = (voiceId: string) => {
     setSelectedVoice(voiceId);
     wsService.sendUpdateVoice(selectedModel, voiceId, rimeConfig?.language || 'eng');
 
-    // Audibly confirm voice switch with the selected persona
+    // Audibly confirm voice switch with the selected persona immediately
     const entry = displayList.find((v) => v.voice_id === voiceId);
     const personaName = entry?.display_name || voiceId;
-    wsService.speakWithVoicePersona(`Switched voice to ${personaName}`);
+    const gender = entry?.gender as ('Male' | 'Female' | undefined);
+    wsService.speakWithVoicePersona(
+      `Switched voice to ${personaName}. How can I assist you?`,
+      undefined,
+      voiceId,
+      gender
+    );
   };
 
   const handlePreview = async (voice: VoiceEntry) => {
     setPreviewing(voice.voice_id);
-    if (voice.sample_audio_url) {
-      const audio = new Audio(voice.sample_audio_url);
-      audio.onended = () => setPreviewing(null);
-      audio.onerror = () => {
-        wsService.speakWithVoicePersona(
-          `Hello! I am ${voice.display_name || voice.voice_id}, operating with low-latency speech synthesis.`,
-          () => setPreviewing(null)
-        );
-      };
-      audio.play().catch(() => {
-        wsService.speakWithVoicePersona(
-          `Hello! I am ${voice.display_name || voice.voice_id}, operating with low-latency speech synthesis.`,
-          () => setPreviewing(null)
-        );
-      });
-    } else {
-      wsService.speakWithVoicePersona(
-        `Hello! I am ${voice.display_name || voice.voice_id}, operating with low-latency speech synthesis.`,
-        () => setPreviewing(null)
-      );
-    }
+    const text = `Hello! I am ${voice.display_name || voice.voice_id}, operating with low-latency speech synthesis.`;
+    wsService.speakWithVoicePersona(
+      text,
+      () => setPreviewing(null),
+      voice.voice_id,
+      voice.gender as ('Male' | 'Female' | undefined)
+    );
   };
 
   return (

@@ -105,19 +105,34 @@ def create_app() -> FastAPI:
     @app.get("/api/voices")
     async def get_voices(model_id: Optional[str] = None, language: Optional[str] = None):
         catalog = get_catalog_service()
+        curated_default = [
+            {"voice_id": "amber", "model_id": "mist", "language": "en", "gender": "Female", "display_name": "Amber (Flagship Natural - Female)", "flagship": True},
+            {"voice_id": "marsh", "model_id": "mist", "language": "en", "gender": "Male", "display_name": "Marsh (Warm Conversational - Male)", "flagship": True},
+            {"voice_id": "crest", "model_id": "mist", "language": "en", "gender": "Male", "display_name": "Crest (Crisp Authoritative - Male)", "flagship": False},
+            {"voice_id": "glade", "model_id": "mist", "language": "en", "gender": "Female", "display_name": "Glade (Gentle Assistant - Female)", "flagship": False},
+            {"voice_id": "luna", "model_id": "mist", "language": "en", "gender": "Female", "display_name": "Luna (Bright & Clear - Female)", "flagship": False},
+            {"voice_id": "marcus", "model_id": "mist", "language": "en", "gender": "Male", "display_name": "Marcus (Deep Executive - Male)", "flagship": False},
+            {"voice_id": "bayou", "model_id": "arcana", "language": "en", "gender": "Male", "display_name": "Bayou (Arcana Expressive - Male)", "flagship": True},
+            {"voice_id": "haven", "model_id": "arcana", "language": "en", "gender": "Female", "display_name": "Haven (Arcana Cinematic - Female)", "flagship": True},
+            {"voice_id": "david", "model_id": "arcana", "language": "en", "gender": "Male", "display_name": "David (Resonant Cinematic - Male)", "flagship": False},
+            {"voice_id": "echo", "model_id": "mist", "language": "es", "gender": "Female", "display_name": "Echo (Spanish Multilingual - Female)", "flagship": False},
+        ]
+
         if model_id and language:
-            voices = [
-                v for v in await catalog.get_voices_for_model(model_id)
-                if v["language"] == language
+            filtered = [
+                v for v in curated_default
+                if (v["model_id"] == model_id and v["language"] == language)
             ]
+            voices = filtered if filtered else [v for v in await catalog.get_voices_for_model(model_id) if v.get("language") == language]
         elif model_id:
-            voices = await catalog.get_voices_for_model(model_id)
+            filtered = [v for v in curated_default if v["model_id"] == model_id]
+            voices = filtered if filtered else await catalog.get_voices_for_model(model_id)
         elif language:
-            voices = await catalog.get_voices_for_language(language)
+            filtered = [v for v in curated_default if v["language"] == language]
+            voices = filtered if filtered else await catalog.get_voices_for_language(language)
         else:
-            # Return first 50 voices
-            meta = await catalog.get_voice_metadata()
-            voices = list(meta.keys())[:50] if hasattr(meta, 'keys') else [v.voice_id for v in await catalog.get_voices()][:50]
+            voices = curated_default
+
         return {"voices": voices, "count": len(voices)}
 
     @app.get("/catalog/voice/{voice_id}")
