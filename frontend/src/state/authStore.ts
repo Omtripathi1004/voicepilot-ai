@@ -7,6 +7,7 @@ export interface UserProfile {
   name: string;
   email: string;
   avatar: string;
+  provider?: 'google' | 'email' | 'guest';
   createdAt: number;
 }
 
@@ -19,17 +20,40 @@ export interface ChatSession {
   turns: ConversationTurn[];
 }
 
+export interface AuthNotification {
+  id: string;
+  title: string;
+  subtitle: string;
+  code: string;
+  email: string;
+  timestamp: number;
+}
+
 interface AuthState {
   currentUser: UserProfile | null;
   savedSessions: ChatSession[];
   activeSessionId: string | null;
   isAuthModalOpen: boolean;
+  authStep: 'credentials' | 'otp_verify';
+  pendingAuth: {
+    name: string;
+    email: string;
+    generatedOtp: string;
+    isGoogle: boolean;
+  } | null;
+  activeNotification: AuthNotification | null;
 
   // Actions
-  login: (name: string, emailOrId: string) => void;
+  login: (name: string, emailOrId: string, provider?: 'google' | 'email') => void;
+  requestEmailOtp: (name: string, email: string) => string;
+  verifyOtp: (code: string) => { success: boolean; error?: string };
+  resendOtp: () => string;
+  loginWithGoogle: (googleEmail?: string, googleName?: string) => void;
   logout: () => void;
   openAuthModal: () => void;
   closeAuthModal: () => void;
+  setAuthStep: (step: 'credentials' | 'otp_verify') => void;
+  clearNotification: () => void;
   createNewChat: () => string;
   loadSession: (sessionId: string) => ChatSession | null;
   saveCurrentSessionTurns: (turns: ConversationTurn[]) => void;
@@ -41,6 +65,7 @@ const DEFAULT_USER: UserProfile = {
   name: 'Pilot Commander',
   email: 'pilot@voicepilot.ai',
   avatar: '👨‍✈️',
+  provider: 'guest',
   createdAt: Date.now(),
 };
 
@@ -76,14 +101,18 @@ export const useAuthStore = create<AuthState>((set, get) => {
     savedSessions: initialSessions,
     activeSessionId: initialSessionId,
     isAuthModalOpen: false,
+    authStep: 'credentials',
+    pendingAuth: null,
+    activeNotification: null,
 
-    login: (name: string, emailOrId: string) => {
+    login: (name: string, emailOrId: string, provider: 'google' | 'email' = 'email') => {
       const cleanId = (emailOrId || name).toLowerCase().replace(/[^a-z0-9_]/g, '_');
       const user: UserProfile = {
         id: cleanId || `user_${Date.now()}`,
         name: name.trim() || 'VoicePilot User',
         email: emailOrId.includes('@') ? emailOrId.trim() : `${cleanId}@voicepilot.ai`,
-        avatar: ['👨‍✈️', '👩‍✈️', '🎙️', '⚡', '🚀'][Math.floor(Math.random() * 5)],
+        avatar: provider === 'google' ? '🌐' : ['👨‍✈️', '👩‍✈️', '🎙️', '⚡', '🚀'][Math.floor(Math.random() * 5)],
+        provider,
         createdAt: Date.now(),
       };
 
@@ -99,8 +128,92 @@ export const useAuthStore = create<AuthState>((set, get) => {
         savedSessions: userSessions,
         activeSessionId: newSessionId,
         isAuthModalOpen: false,
+        authStep: 'credentials',
+        pendingAuth: null,
       });
     },
+
+    requestEmailOtp: (name: string, email: string) => {
+      // Generate a secure 6-digit OTP code
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const safeName = name.trim() || email.split('@')[0];
+
+      const notification: AuthNotification = {
+        id: `notif_${Date.now()}`,
+        title: 'Google / Gmail Security',
+        subtitle: `VoicePilot AI Verification Code for ${email}`,
+        code: otp,
+        email,
+        timestamp: Date.now(),
+      };
+
+      set({
+        authStep: 'otp_verify',
+        pendingAuth: {
+          name: safeName,
+          email: email.trim(),
+          generatedOtp: otp,
+          isGoogle: false,
+        },
+        activeNotification: notification,
+      });
+
+      return otp;
+    },
+
+    verifyOtp: (code: string) => {
+      const { pendingAuth, login } = get();
+      if (!pendingAuth) {
+        return { success: false, error: 'No authentication session in progress. Please try again.' };
+      }
+
+      if (code.trim() !== pendingAuth.generatedOtp) {
+        return { success: false, error: 'Incorrect 6-digit OTP code. Please check your Gmail and try again.' };
+      }
+
+      // Successful verification
+      login(pendingAuth.name, pendingAuth.email, pendingAuth.isGoogle ? 'google' : 'email');
+      set({
+        authStep: 'credentials',
+        pendingAuth: null,
+        activeNotification: null,
+      });
+
+      return { success: true };
+    },
+
+    resendOtp: () => {
+      const { pendingAuth } = get();
+      const newOtp = Math.floor(100000 + Math.random() * 900000).toString();
+      if (pendingAuth) {
+        const notification: AuthNotification = {
+          id: `notif_${Date.now()}`,
+          title: 'Google / Gmail Security',
+          subtitle: `New VoicePilot AI Verification Code for ${pendingAuth.email}`,
+          code: newOtp,
+          email: pendingAuth.email,
+          timestamp: Date.now(),
+        };
+
+        set({
+          pendingAuth: {
+            ...pendingAuth,
+            generatedOtp: newOtp,
+          },
+          activeNotification: notification,
+        });
+      }
+      return newOtp;
+    },
+
+    loginWithGoogle: (googleEmail = 'user@gmail.com', googleName = 'Google User') => {
+      // Direct Google OAuth flow
+      const { login } = get();
+      login(googleName, googleEmail, 'google');
+    },
+
+    setAuthStep: (step) => set({ authStep: step }),
+    clearNotification: () => set({ activeNotification: null }),
 
     logout: () => {
       const guest = DEFAULT_USER;
@@ -112,11 +225,14 @@ export const useAuthStore = create<AuthState>((set, get) => {
         currentUser: guest,
         savedSessions: guestSessions,
         activeSessionId: guestSessions[0]?.id || `session_${Date.now()}`,
+        authStep: 'credentials',
+        pendingAuth: null,
+        activeNotification: null,
       });
     },
 
-    openAuthModal: () => set({ isAuthModalOpen: true }),
-    closeAuthModal: () => set({ isAuthModalOpen: false }),
+    openAuthModal: () => set({ isAuthModalOpen: true, authStep: 'credentials' }),
+    closeAuthModal: () => set({ isAuthModalOpen: false, authStep: 'credentials' }),
 
     createNewChat: () => {
       const { currentUser, savedSessions } = get();

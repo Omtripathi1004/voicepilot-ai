@@ -3,6 +3,7 @@ import { wsService } from './services/websocketService';
 import { useConversationStore } from './state/conversationStore';
 import { useAuthStore } from './state/authStore';
 import { AuthModal } from './components/AuthModal/AuthModal';
+import { GmailNotificationToast } from './components/GmailNotificationToast/GmailNotificationToast';
 import { ChatHistoryDrawer } from './components/ChatHistoryDrawer/ChatHistoryDrawer';
 import { AgentConsole } from './pages/AgentConsole';
 import { ObservabilityDashboard } from './pages/ObservabilityDashboard';
@@ -168,6 +169,9 @@ export const App: React.FC = () => {
 
       {/* User Authentication & Profile Modal */}
       <AuthModal />
+
+      {/* Real-time Gmail OTP Notification Toast */}
+      <GmailNotificationToast />
 
       {/* Chat History Drawer (Partitioned by User ID) */}
       <ChatHistoryDrawer
