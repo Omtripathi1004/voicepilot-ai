@@ -1,0 +1,147 @@
+/* VoicePilot AI — Global Styles */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-bg: #0a0a0f;
+  --color-surface: #111118;
+  --color-surface-2: #1a1a2e;
+  --color-brand: #6366f1;
+  --color-rime: #22c55e;
+  --color-text: #f1f5f9;
+  --color-text-muted: #94a3b8;
+  --color-border: rgba(255, 255, 255, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+/* Glass card */
+.glass {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 12px;
+}
+
+/* Status pulse ring */
+@keyframes statusPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.4); opacity: 0.4; }
+}
+
+.status-pulse { animation: statusPulse 1.5s ease-in-out infinite; }
+
+/* Waveform bar animation */
+@keyframes waveBar {
+  0%, 100% { transform: scaleY(0.3); }
+  50% { transform: scaleY(1); }
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a78bfa 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-text-rime {
+  background: linear-gradient(135deg, #22c55e 0%, #4ade80 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Smooth transitions */
+* { transition: border-color 0.2s, background-color 0.2s, opacity 0.2s; }
+
+/* Glow effects */
+.glow-brand { box-shadow: 0 0 20px rgba(99, 102, 241, 0.3); }
+.glow-rime { box-shadow: 0 0 20px rgba(34, 197, 94, 0.3); }
+.glow-red { box-shadow: 0 0 20px rgba(239, 68, 68, 0.3); }
+
+/* Mono text */
+.font-mono { font-family: 'JetBrains Mono', monospace; }
+
+/* Status indicator colors */
+.status-idle { color: #64748b; }
+.status-listening { color: #22c55e; }
+.status-processing { color: #6366f1; }
+.status-tool-execution { color: #f59e0b; }
+.status-speaking { color: #06b6d4; }
+.status-interrupted { color: #ef4444; }
+.status-cancelling { color: #f97316; }
+.status-error { color: #ef4444; }
+
+/* Speaking animation */
+@keyframes speakPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(6, 182, 212, 0.4); }
+  50% { box-shadow: 0 0 0 12px rgba(6, 182, 212, 0); }
+}
+.speaking-pulse { animation: speakPulse 1.2s ease-in-out infinite; }
+
+/* Interrupt button glow */
+@keyframes interruptGlow {
+  0%, 100% { box-shadow: 0 0 10px rgba(239, 68, 68, 0.5), 0 0 0 0 rgba(239, 68, 68, 0.3); }
+  50% { box-shadow: 0 0 25px rgba(239, 68, 68, 0.8), 0 0 15px rgba(239, 68, 68, 0.2); }
+}
+.interrupt-glow { animation: interruptGlow 1.5s ease-in-out infinite; }
+
+/* Turn message animation */
+@keyframes turnSlideIn {
+  from { transform: translateY(8px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.turn-slide-in { animation: turnSlideIn 0.25s ease-out; }
+
+/* Tooltip */
+.tooltip {
+  position: relative;
+}
+.tooltip::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 8px;
+  background: rgba(0,0,0,0.8);
+  color: white;
+  border-radius: 4px;
+  font-size: 11px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+.tooltip:hover::after { opacity: 1; }

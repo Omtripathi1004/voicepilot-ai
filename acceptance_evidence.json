@@ -1,0 +1,99 @@
+{
+  "test_id": "0b5baa6e",
+  "timestamp": 1788965913.2634346,
+  "steps": [
+    {
+      "name": "initial_state_idle",
+      "passed": true,
+      "detail": "Status: IDLE",
+      "measured": null,
+      "timestamp": 1788965913.2634346
+    },
+    {
+      "name": "interrupt_increments_generation",
+      "passed": true,
+      "detail": "old=27f5a36f, new=54152d80",
+      "measured": null,
+      "timestamp": 1788965915.0348914
+    },
+    {
+      "name": "audio_cancel_event_set",
+      "passed": true,
+      "detail": "audio cancel event activated on interrupt",
+      "measured": {
+        "interrupt_to_cancel_ms": 265.52271842956543
+      },
+      "timestamp": 1788965915.0348914
+    },
+    {
+      "name": "revised_turn_has_new_gen",
+      "passed": true,
+      "detail": "revised_gen=54152d80",
+      "measured": null,
+      "timestamp": 1788965915.0348914
+    },
+    {
+      "name": "old_gen_is_stale",
+      "passed": true,
+      "detail": "Stale check on old_gen=27f5a36f returned True",
+      "measured": null,
+      "timestamp": 1788965915.0348914
+    },
+    {
+      "name": "revised_response_not_stale",
+      "passed": true,
+      "detail": "Response stale=False",
+      "measured": null,
+      "timestamp": 1788965915.036247
+    },
+    {
+      "name": "revised_response_has_text",
+      "passed": true,
+      "detail": "Response: The result is 144",
+      "measured": null,
+      "timestamp": 1788965915.036247
+    },
+    {
+      "name": "stale_rejections_counted",
+      "passed": true,
+      "detail": "Total stale rejections: 2",
+      "measured": 2,
+      "timestamp": 1788965915.036247
+    },
+    {
+      "name": "response_reflects_revised_request",
+      "passed": true,
+      "detail": "Expected '144' in response: 'The result is 144'",
+      "measured": null,
+      "timestamp": 1788965915.036247
+    },
+    {
+      "name": "generation_ids_tracked",
+      "passed": true,
+      "detail": "Tracked 3 generation IDs",
+      "measured": null,
+      "timestamp": 1788965915.036247
+    }
+  ],
+  "passed": true,
+  "failures": [],
+  "stale_rejections_observed": 2,
+  "generation_ids": [
+    "27f5a36f-4d24-45d7-bd6f-618b05fe0385",
+    "54152d80-a491-4637-bae7-c14d500df455",
+    "54152d80-a491-4637-bae7-c14d500df455"
+  ],
+  "summary": {
+    "total_steps": 10,
+    "passed_steps": 10,
+    "failed_steps": 0,
+    "overall": "PASS",
+    "stale_rejections": 2,
+    "generation_id_chain": [
+      "27f5a36f-4d24-45d7-bd6f-618b05fe0385",
+      "54152d80-a491-4637-bae7-c14d500df455",
+      "54152d80-a491-4637-bae7-c14d500df455"
+    ],
+    "revised_response_text": "The result is 144"
+  }
+}
