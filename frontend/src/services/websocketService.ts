@@ -128,21 +128,22 @@ class WebSocketService {
   }
 
   sendUpdateVoice(model: string, voice: string, language: string): void {
+    // Update store state immediately in all cases so UI and local synthesizer stay in sync
+    useConversationStore.getState().setRimeConfig(
+      {
+        model_id: model,
+        voice,
+        language,
+        endpoint: 'https://users.rime.ai/v1/rime-tts',
+        audio_format: 'audio/mp3',
+        region: 'us-east',
+        provider: 'rime',
+      },
+      !this.isConnected
+    );
+
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.send({ type: 'update_voice', model, voice, language });
-    } else {
-      useConversationStore.getState().setRimeConfig(
-        {
-          model_id: model,
-          voice,
-          language,
-          endpoint: 'https://users.rime.ai/v1/rime-tts',
-          audio_format: 'audio/mp3',
-          region: 'us-east',
-          provider: 'rime',
-        },
-        true
-      );
     }
   }
 
@@ -153,12 +154,7 @@ class WebSocketService {
       // Offline speech synthesis for pronunciation lab
       const phrase = text || 'Test phrase for acoustic normalization.';
       const synthStart = performance.now();
-      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-        const u = new SpeechSynthesisUtterance(phrase);
-        u.rate = 1.0;
-        window.speechSynthesis.speak(u);
-      }
+      this.speakWithVoicePersona(phrase);
       setTimeout(() => {
         const synthMs = Math.round(performance.now() - synthStart + 68);
         const handlers = this.messageHandlers.get('pronunciation_result') || [];
@@ -265,7 +261,17 @@ class WebSocketService {
 
     const mathMatch = norm.match(/(\d+(?:\.\d+)?(?:\s*[\+\-\*\/\^x]\s*\d+(?:\.\d+)?)+)/);
 
-    if (mathMatch) {
+    // 2. Year interval / range math (e.g., "1980 to 2005", "from 1980 to 2005")
+    const yearRangeMatch = lower.match(/\b(19\d{2}|20\d{2})\s*(?:to|through|-|until)\s*(19\d{2}|20\d{2})\b/);
+
+    if (yearRangeMatch) {
+      const y1 = parseInt(yearRangeMatch[1], 10);
+      const y2 = parseInt(yearRangeMatch[2], 10);
+      const span = Math.abs(y2 - y1);
+      toolUsed = 'calculator';
+      toolResult = `${span} years`;
+      reply = `The time span from ${y1} to ${y2} is exactly ${span} years, which equals ${span * 12} months or approximately ${(span * 365.25).toLocaleString()} days.`;
+    } else if (mathMatch) {
       try {
         const rawExpr = mathMatch[1].replace(/x/g, '*').trim();
         const sanitized = rawExpr.replace(/[^0-9\+\-\*\/\.\s\(\)]/g, '');
@@ -278,6 +284,30 @@ class WebSocketService {
       } catch (err) {
         console.warn('Math eval failed:', err);
       }
+    } else if (
+      (lower.includes('data structure') && lower.includes('array')) ||
+      lower.includes('data structure or array') ||
+      lower.includes('data structure and array')
+    ) {
+      reply = `In computer science: A Data Structure is a specialized layout for organizing, processing, retrieving, and storing data in computer memory to enable efficient access and modification. An Array is the foundational linear, homogeneous data structure that allocates contiguous memory blocks for elements of the same type. Arrays provide instant O(1) constant-time indexing via base-offset memory arithmetic, but suffer from fixed size and O(n) insertion/deletion cost due to required element shifting.`;
+    } else if (lower.includes('data structure') || lower.includes('data structures')) {
+      reply = `A Data Structure is a systematic way of organizing, managing, and storing data in memory to perform operations efficiently. Scientifically, it serves as the concrete physical realization of an Abstract Data Type (ADT). Data structures are categorized into linear types (Arrays, Linked Lists, Stacks, Queues) where elements form a sequence, and non-linear types (Trees, Graphs, Hash Tables) where elements exhibit hierarchical or interconnected relationships, balancing time and space complexity.`;
+    } else if (lower.includes('array') || lower.includes('arrays')) {
+      reply = `An Array is a linear, homogeneous data structure comprising elements of identical data type stored in contiguous physical memory locations. Each element is addressed by an integer index, computed using the formula: Memory Address = Base Address + (Index * Element Size). Key properties include O(1) constant-time random access, optimal hardware cache locality, fixed capacity at allocation, and O(n) linear-time insertions and deletions.`;
+    } else if (lower.includes('linked list')) {
+      reply = `A Linked List is a linear dynamic data structure composed of sequential nodes stored in non-contiguous heap memory. Each node contains a data payload and one or more pointers referencing neighboring nodes. Operations: O(1) insertion and deletion at known pointer references, but O(n) sequential search time since random index access is not possible.`;
+    } else if (lower.includes('stack')) {
+      reply = `A Stack is a linear Abstract Data Type operating under the Last-In, First-Out (LIFO) protocol. Primary operations are Push to insert, Pop to remove, and Peek to inspect the top element, all executing in O(1) constant time. Stacks are fundamental to function call management, expression evaluation, syntax parsing, and depth-first search.`;
+    } else if (lower.includes('queue')) {
+      reply = `A Queue is a linear data structure operating under the First-In, First-Out (FIFO) protocol. Elements are inserted at the rear (enqueue) and removed from the front (dequeue) in O(1) constant time. Queues are essential for asynchronous buffering, CPU job scheduling, and breadth-first search.`;
+    } else if (lower.includes('tree') || lower.includes('binary tree') || lower.includes('bst')) {
+      reply = `A Tree is a non-linear hierarchical data structure composed of nodes connected by directed edges originating from a root. In a Binary Search Tree (BST), every node satisfies the invariant that left subtree keys are smaller and right subtree keys are larger than the parent, providing average O(log n) time complexity for search, insertion, and deletion.`;
+    } else if (lower.includes('graph')) {
+      reply = `A Graph is a non-linear data structure defined as an ordered pair G = (V, E), where V is a finite set of vertices and E is a set of edges connecting pairs of vertices. Graphs represent arbitrary complex networks and are traversed systematically using Depth-First Search (DFS) with a stack or Breadth-First Search (BFS) with a queue.`;
+    } else if (lower.includes('hash table') || lower.includes('hash map') || lower.includes('hashing')) {
+      reply = `A Hash Table is an associative data structure that maps keys to values using a deterministic hash function. It computes an integer index into an underlying array of buckets, yielding average O(1) constant-time lookup, insertion, and deletion. Collisions are resolved through techniques like separate chaining or open addressing.`;
+    } else if (lower.includes('algorithm') || lower.includes('big o') || lower.includes('complexity')) {
+      reply = `An Algorithm is a finite, unambiguous set of step-by-step instructions designed to transform inputs into outputs. Big-O notation, O(f(n)), describes the asymptotic upper bound of an algorithm's execution time or space requirements as the input size n approaches infinity, establishing worst-case performance guarantees.`;
     } else if (lower.includes('time') || lower.includes('clock')) {
       toolUsed = 'clock_tool';
       toolResult = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -287,7 +317,7 @@ class WebSocketService {
       const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
       reply = `Today is ${today}.`;
     } else if (/^(hi|hello|hey|good morning|good afternoon|good evening)\b/i.test(lower)) {
-      reply = `Hello ${userName}! How can I help you today? You can ask me to calculate equations, test voice interruptions, or explore Rime voices.`;
+      reply = `Hello ${userName}! How can I help you today? You can ask me for scientific definitions, calculate equations, test voice interruptions, or explore Rime voices.`;
     } else if (lower.includes('who are you') || lower.includes('what are you') || lower.includes('your name')) {
       reply = `I am VoicePilot AI, a low-latency voice agent built on Rime TTS. I specialize in streaming speech synthesis and instant barge-in recovery.`;
     } else if (lower.includes('how are you') || lower.includes("how's it going")) {
@@ -297,7 +327,7 @@ class WebSocketService {
     } else if (lower.includes('rime') || lower.includes('tts')) {
       reply = `Rime TTS is our core speech engine. It features the ultra-fast Mist model with sub-100ms time-to-first-audio, as well as the expressive Arcana model for cinematic narration.`;
     } else if (lower.includes('interrupt') || lower.includes('barge in') || lower.includes('fencing')) {
-      reply = `Our barge-in system uses monotonic generation fencing. When you speak mid-sentence, the active audio generation is cancelled immediately and the new generation takes over with zero audio bleed. Try hitting the space bar while I talk!`;
+      reply = `Our barge-in system uses monotonic generation fencing. When you speak mid-sentence, the active audio generation is cancelled immediately and the new generation takes over with zero audio bleed. Try speaking or clicking interrupt while I talk!`;
     } else if (lower.includes('joke') || lower.includes('funny')) {
       reply = `Why did the speech synthesizer break up with the grammar checker? Because it couldn't handle the pauses!`;
     } else if (lower.includes('weather')) {
@@ -305,17 +335,11 @@ class WebSocketService {
     } else if (lower.includes('thank') || lower.includes('appreciate')) {
       reply = `You're very welcome, ${userName}! Feel free to keep the conversation going or try another voice persona.`;
     } else if (lower.includes('help') || lower.includes('what can you do')) {
-      reply = `I can calculate complex math expressions, track elapsed timers, test Rime phonetic normalization, record conversation telemetry, and demonstrate real-time barge-in recovery.`;
-    } else if (lower.length < 5 || /^(ok|okay|yes|yeah|sure|cool|alright|nice)$/i.test(lower)) {
+      reply = `I can provide academic definitions in computer science and mathematics, calculate math expressions, track elapsed timers, test Rime phonetic normalization, and demonstrate real-time barge-in recovery.`;
+    } else if (lower.length < 4 || /^(ok|okay|yes|yeah|sure|cool|alright|nice)$/i.test(lower)) {
       reply = `Understood. What would you like to discuss next?`;
     } else {
-      // Dynamic conversational continuation
-      const responses = [
-        `That's an interesting point about "${text}". What aspects would you like to dive deeper into?`,
-        `I hear you. When looking at "${text}", there are several interesting directions to explore. How would you like to proceed?`,
-        `Got it! Let's explore that further. Could you tell me more about what you'd like to achieve?`,
-      ];
-      reply = responses[Math.floor(Math.random() * responses.length)];
+      reply = `Regarding "${text}": in technical and scientific terms, this involves key principles of system architecture, algorithmic analysis, and structured problem solving. Feel free to ask for specific definitions, formulas, or implementation details!`;
     }
 
     if (toolUsed) {
@@ -371,23 +395,11 @@ class WebSocketService {
         }
       );
 
-      // Play through browser SpeechSynthesis if available
-      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(reply);
-        utterance.rate = 1.05;
-        utterance.onend = () => {
-          store.setIsPlaying(false);
-          store.setStatus('IDLE');
-        };
-        window.speechSynthesis.speak(utterance);
-      } else {
-        const t3 = setTimeout(() => {
-          store.setIsPlaying(false);
-          store.setStatus('IDLE');
-        }, 2500);
-        this.simTimeouts.push(t3);
-      }
+      // Play through browser SpeechSynthesis with active voice persona
+      this.speakWithVoicePersona(reply, () => {
+        store.setIsPlaying(false);
+        store.setStatus('IDLE');
+      });
     }, toolUsed ? 700 : 350);
     this.simTimeouts.push(t2);
   }
@@ -651,6 +663,94 @@ class WebSocketService {
 
     // 3. Stop WebAudio playback
     this.stopAudioPlayback();
+  }
+
+  /**
+   * Speak text through browser SpeechSynthesis with active voice persona modulation
+   * (Male vs Female voice matching and pitch modulation so that male voices sound deep/masculine
+   * and female voices sound articulate/feminine across all browsers).
+   */
+  speakWithVoicePersona(text: string, onEnd?: () => void): void {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      if (onEnd) onEnd();
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 1.0;
+
+    const store = useConversationStore.getState();
+    const voiceId = (store.rimeConfig?.voice || 'amber').toLowerCase();
+
+    // Determine gender based on known Rime voice personas
+    const isMale = ['marsh', 'crest', 'bayou', 'marcus', 'david', 'james', 'male'].some((m) =>
+      voiceId.includes(m)
+    );
+
+    const voices = window.speechSynthesis.getVoices();
+    if (voices && voices.length > 0) {
+      if (isMale) {
+        // Find best male voice available in system
+        const maleVoice =
+          voices.find((v) => {
+            const name = v.name.toLowerCase();
+            return (
+              (name.includes('david') ||
+                name.includes('mark') ||
+                name.includes('george') ||
+                name.includes('guy') ||
+                name.includes('alex') ||
+                name.includes('daniel') ||
+                name.includes('richard') ||
+                name.includes('male') ||
+                name.includes('microsoft david') ||
+                name.includes('google us english male')) &&
+              !name.includes('female') &&
+              !name.includes('zira')
+            );
+          }) ||
+          voices.find(
+            (v) => !v.name.toLowerCase().includes('zira') && !v.name.toLowerCase().includes('female')
+          );
+
+        if (maleVoice) {
+          utterance.voice = maleVoice;
+        }
+        // Deep masculine pitch modulation
+        utterance.pitch = 0.78;
+      } else {
+        // Find best female voice
+        const femaleVoice = voices.find((v) => {
+          const name = v.name.toLowerCase();
+          return (
+            name.includes('zira') ||
+            name.includes('samantha') ||
+            name.includes('victoria') ||
+            name.includes('karen') ||
+            name.includes('female') ||
+            name.includes('google us english')
+          );
+        });
+
+        if (femaleVoice) {
+          utterance.voice = femaleVoice;
+        }
+        // Feminine pitch modulation
+        utterance.pitch = 1.15;
+      }
+    } else {
+      utterance.pitch = isMale ? 0.78 : 1.15;
+    }
+
+    utterance.onend = () => {
+      if (onEnd) onEnd();
+    };
+    utterance.onerror = () => {
+      if (onEnd) onEnd();
+    };
+
+    window.speechSynthesis.speak(utterance);
   }
 
   get isConnected(): boolean {

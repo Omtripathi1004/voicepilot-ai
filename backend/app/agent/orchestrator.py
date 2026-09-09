@@ -166,8 +166,87 @@ def _simple_response(user_text: str, was_interrupted: bool = False) -> str:
     if "demo" in lower or "test" in lower:
         return "Sure! Let me demonstrate my capabilities. I'll start a test operation. You can interrupt me at any time by speaking or clicking the interrupt button."
 
+    if (
+        ("data structure" in lower and "array" in lower)
+        or "data structure or array" in lower
+        or "data structure and array" in lower
+    ):
+        return (
+            "In computer science: A Data Structure is a specialized format for organizing, "
+            "processing, retrieving, and storing data in computer memory to enable efficient access and modification. "
+            "An Array is the foundational linear, homogeneous data structure that allocates contiguous memory blocks "
+            "for elements of the same type. Arrays provide instant O(1) constant-time indexing via base-offset memory arithmetic, "
+            "but suffer from fixed size and O(n) insertion/deletion cost due to required element shifting."
+        )
+
+    if "data structure" in lower or "data structures" in lower:
+        return (
+            "A Data Structure is a systematic way of organizing, managing, and storing data in memory to perform operations efficiently. "
+            "Scientifically, it serves as the concrete physical realization of an Abstract Data Type (ADT). "
+            "Data structures are categorized into linear types (Arrays, Linked Lists, Stacks, Queues) where elements form a sequence, "
+            "and non-linear types (Trees, Graphs, Hash Tables) where elements exhibit hierarchical or interconnected relationships, "
+            "balancing time and space complexity."
+        )
+
+    if "array" in lower or "arrays" in lower:
+        return (
+            "An Array is a linear, homogeneous data structure comprising elements of identical data type stored in contiguous "
+            "physical memory locations. Each element is addressed by an integer index, computed using the formula: "
+            "Memory Address = Base Address + (Index * Element Size). Key properties include O(1) constant-time random access, "
+            "optimal hardware cache locality, fixed capacity at allocation, and O(n) linear-time insertions and deletions."
+        )
+
+    if "linked list" in lower:
+        return (
+            "A Linked List is a linear dynamic data structure composed of sequential nodes stored in non-contiguous heap memory. "
+            "Each node contains a data payload and one or more pointers referencing neighboring nodes, offering O(1) insertions "
+            "and deletions at known references, but requiring O(n) sequential search."
+        )
+
+    if "stack" in lower:
+        return (
+            "A Stack is a linear Abstract Data Type operating under the Last-In, First-Out (LIFO) protocol. "
+            "Operations are Push, Pop, and Peek in O(1) constant time, essential for function call management, recursion, and syntax parsing."
+        )
+
+    if "queue" in lower:
+        return (
+            "A Queue is a linear data structure operating under the First-In, First-Out (FIFO) protocol. "
+            "Elements are enqueued at the rear and dequeued from the front in O(1) constant time, essential for buffering and CPU scheduling."
+        )
+
+    if "tree" in lower or "binary tree" in lower or "bst" in lower:
+        return (
+            "A Tree is a non-linear hierarchical data structure of connected nodes. A Binary Search Tree (BST) enforces "
+            "that left subtree keys are smaller and right subtree keys are larger than the parent, yielding average O(log n) search, insertion, and deletion."
+        )
+
+    if "graph" in lower:
+        return (
+            "A Graph is a non-linear data structure defined as G = (V, E) of vertices and edges representing arbitrary network relationships, "
+            "traversed using Depth-First Search (DFS) or Breadth-First Search (BFS)."
+        )
+
+    if "hash table" in lower or "hash map" in lower:
+        return (
+            "A Hash Table maps keys to values via a deterministic hash function into an array of buckets, achieving average O(1) time complexity."
+        )
+
+    if "algorithm" in lower or "big o" in lower:
+        return (
+            "An Algorithm is a finite, unambiguous set of step-by-step instructions designed to transform inputs into outputs. "
+            "Big-O notation describes the asymptotic upper bound of an algorithm's execution time or memory requirements as input size n approaches infinity."
+        )
+
+    import re
+    year_match = re.search(r'\b(19\d{2}|20\d{2})\s*(?:to|through|-|until)\s*(19\d{2}|20\d{2})\b', lower)
+    if year_match:
+        y1, y2 = int(year_match.group(1)), int(year_match.group(2))
+        span = abs(y2 - y1)
+        return f"The interval from {y1} to {y2} spans exactly {span} years, or {span * 12} months."
+
     if any(w in lower for w in ["help", "what can you do", "capabilities"]):
-        return "I can calculate math expressions, set countdown timers, manage your task list, and look up information about VoicePilot AI. Just tell me what you need!"
+        return "I can provide academic definitions in computer science, calculate math expressions, set countdown timers, manage your task list, and demonstrate real-time barge-in recovery. Just tell me what you need!"
 
     if any(w in lower for w in ["interrupt", "stop", "cancel"]):
         return "I've noted your request. What would you like to do instead?"

@@ -114,6 +114,32 @@ export function useVoiceRecorder(options: UseVoiceRecorderOptions = {}) {
     let speechTimer: ReturnType<typeof setTimeout> | null = null;
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
+      // 1. Acoustic Echo / Self-Loop Prevention:
+      // When the assistant is actively speaking, ignore speaker bleed so the AI does not talk to itself!
+      const currentStore = useConversationStore.getState();
+      const isAssistantSpeaking =
+        currentStore.isPlaying ||
+        currentStore.status === 'SPEAKING' ||
+        (typeof window !== 'undefined' && window.speechSynthesis && window.speechSynthesis.speaking);
+
+      let rawChunk = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        rawChunk += ' ' + event.results[i][0].transcript;
+      }
+      const rawChunkLower = rawChunk.toLowerCase().trim();
+
+      if (isAssistantSpeaking) {
+        // Check if user is speaking an intentional barge-in command
+        if (/\b(stop|wait|cancel|hold on|pause|hush|interrupt|quiet)\b/i.test(rawChunkLower)) {
+          wsService.sendInterrupt();
+          setInterimTranscript('');
+          pendingSpeech = '';
+          if (speechTimer) clearTimeout(speechTimer);
+        }
+        // Discard speaker output so it doesn't loop
+        return;
+      }
+
       let interim = '';
       let currentFinal = '';
 
@@ -135,13 +161,13 @@ export function useVoiceRecorder(options: UseVoiceRecorderOptions = {}) {
       // Reset debounce timer on any new speech input
       if (speechTimer) clearTimeout(speechTimer);
 
-      // Debounce: Wait 750ms of quiet before sending the finalized speech
+      // Debounce: Wait 1100ms of quiet before sending the finalized speech (allows natural pauses between words)
       speechTimer = setTimeout(() => {
-        const fullText = (pendingSpeech || interim).trim();
+        const fullText = (pendingSpeech || (interim.length > 5 ? interim : '')).trim();
         pendingSpeech = '';
 
-        // Ignore short filler noise like "um", "uh", or single characters
-        if (fullText.length >= 2 && !/^(uh|um|er|ah)$/i.test(fullText)) {
+        // Ignore short filler noise or single stray syllables
+        if (fullText.length >= 3 && !/^(uh|um|er|ah|eh|oh)$/i.test(fullText)) {
           setTranscript(fullText);
           setInterimTranscript('');
           const wasInterrupted = store.status === 'INTERRUPTED';
@@ -152,7 +178,7 @@ export function useVoiceRecorder(options: UseVoiceRecorderOptions = {}) {
             wsService.sendUserSpeech(fullText, wasInterrupted);
           }
         }
-      }, 750);
+      }, 1100);
     };
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {

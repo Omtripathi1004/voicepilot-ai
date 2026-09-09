@@ -53,15 +53,35 @@ export const VoiceSelector: React.FC = () => {
   const handleVoiceChange = (voiceId: string) => {
     setSelectedVoice(voiceId);
     wsService.sendUpdateVoice(selectedModel, voiceId, rimeConfig?.language || 'eng');
+
+    // Audibly confirm voice switch with the selected persona
+    const entry = displayList.find((v) => v.voice_id === voiceId);
+    const personaName = entry?.display_name || voiceId;
+    wsService.speakWithVoicePersona(`Switched voice to ${personaName}`);
   };
 
   const handlePreview = async (voice: VoiceEntry) => {
+    setPreviewing(voice.voice_id);
     if (voice.sample_audio_url) {
-      setPreviewing(voice.voice_id);
       const audio = new Audio(voice.sample_audio_url);
       audio.onended = () => setPreviewing(null);
-      audio.onerror = () => setPreviewing(null);
-      audio.play().catch(() => setPreviewing(null));
+      audio.onerror = () => {
+        wsService.speakWithVoicePersona(
+          `Hello! I am ${voice.display_name || voice.voice_id}, operating with low-latency speech synthesis.`,
+          () => setPreviewing(null)
+        );
+      };
+      audio.play().catch(() => {
+        wsService.speakWithVoicePersona(
+          `Hello! I am ${voice.display_name || voice.voice_id}, operating with low-latency speech synthesis.`,
+          () => setPreviewing(null)
+        );
+      });
+    } else {
+      wsService.speakWithVoicePersona(
+        `Hello! I am ${voice.display_name || voice.voice_id}, operating with low-latency speech synthesis.`,
+        () => setPreviewing(null)
+      );
     }
   };
 
