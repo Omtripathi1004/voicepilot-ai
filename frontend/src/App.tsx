@@ -75,42 +75,67 @@ export const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-brand-500 selection:text-white">
       {/* Top Main Navigation Header */}
-      <header className="sticky top-0 z-50 bg-slate-950/80 backdrop-blur-md border-b border-slate-800/80 px-4 py-3">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
-          {/* Logo & Branding */}
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-brand-600 via-indigo-600 to-violet-500 flex items-center justify-center shadow-md shadow-brand-500/20">
-              <span className="text-lg font-black text-white">VP</span>
+      <header className="sticky top-0 z-50 bg-slate-950/90 backdrop-blur-md border-b border-slate-800/80 px-3 py-2 sm:px-4 sm:py-3">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-2.5">
+          {/* Top row on mobile: Logo & Quick utilities */}
+          <div className="w-full md:w-auto flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5">
+              <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl bg-gradient-to-tr from-brand-600 via-indigo-600 to-violet-500 flex items-center justify-center shadow-md shadow-brand-500/20 flex-shrink-0">
+                <span className="text-base sm:text-lg font-black text-white">VP</span>
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <span className="font-extrabold text-sm sm:text-base tracking-tight text-white">VoicePilot AI</span>
+                  <span className="px-1.5 py-0.2 rounded bg-brand-950 text-brand-300 border border-brand-500/30 text-[9px] sm:text-[10px] font-mono">
+                    v1.0
+                  </span>
+                </div>
+                <div className="text-[10px] sm:text-[11px] text-slate-400 hidden xs:block line-clamp-1">
+                  Real-Time Voice Agent with Rime TTS
+                </div>
+              </div>
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-extrabold text-base tracking-tight text-white">VoicePilot AI</span>
-                <span className="px-1.5 py-0.2 rounded bg-brand-950 text-brand-300 border border-brand-500/30 text-[10px] font-mono">
-                  v1.0
-                </span>
-              </div>
-              <div className="text-[11px] text-slate-400">
-                Production-grade Real-Time Voice Agent with Rime TTS
-              </div>
+
+            {/* Mobile-only compact quick actions */}
+            <div className="flex md:hidden items-center gap-1.5">
+              <button
+                onClick={handleRunDemo}
+                disabled={isDemoRunning}
+                className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium border transition-all ${
+                  isDemoRunning
+                    ? 'bg-amber-950/40 border-amber-500/50 text-amber-300 animate-pulse'
+                    : 'bg-violet-600 hover:brightness-110 text-white'
+                }`}
+                title="Quick Demo"
+              >
+                <span>🎬</span>
+                <span className="hidden sm:inline">Demo</span>
+              </button>
+              <button
+                onClick={openAuthModal}
+                className="px-2 py-1 rounded-lg bg-slate-900 border border-slate-700 text-slate-200 text-xs"
+              >
+                {currentUser?.avatar || '👤'}
+              </button>
             </div>
           </div>
 
-          {/* Navigation Tabs */}
-          <nav className="flex items-center gap-1 p-1 rounded-xl bg-slate-900/90 border border-slate-800">
+          {/* Navigation Tabs - Horizontally scrollable on mobile */}
+          <nav className="w-full md:w-auto flex items-center gap-1 p-1 rounded-xl bg-slate-900/90 border border-slate-800 overflow-x-auto no-scrollbar scroll-smooth">
             {navTabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                className={`relative flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap flex-shrink-0 ${
                   activeTab === tab.id
                     ? 'bg-brand-600 text-white shadow-md shadow-brand-600/30'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
                 }`}
               >
                 <span>{tab.icon}</span>
-                <span className="hidden md:inline">{tab.label}</span>
+                <span>{tab.label}</span>
                 {tab.badge && (
-                  <span className="hidden lg:inline text-[9px] px-1.5 py-0.2 rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-500/40 font-mono">
+                  <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-500/40 font-mono">
                     {tab.badge}
                   </span>
                 )}
@@ -118,8 +143,8 @@ export const App: React.FC = () => {
             ))}
           </nav>
 
-          {/* Right Action Utilities */}
-          <div className="flex items-center gap-2">
+          {/* Right Action Utilities (Desktop) */}
+          <div className="hidden md:flex items-center gap-2">
             {/* Quick Interruption Demo */}
             <button
               onClick={handleRunDemo}

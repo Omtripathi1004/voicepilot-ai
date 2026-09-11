@@ -135,7 +135,7 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen w-full bg-slate-950 text-slate-100 flex flex-col items-center justify-between p-4 sm:p-8 relative overflow-hidden font-sans select-none">
+    <div className="min-h-screen w-full bg-slate-950 text-slate-100 flex flex-col items-center justify-between p-3 sm:p-8 relative overflow-y-auto overflow-x-hidden font-sans select-none">
       {/* Dynamic Background Glow Elements */}
       <div className="absolute top-1/4 -left-32 w-96 h-96 bg-brand-600/15 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-violet-600/15 rounded-full blur-[120px] pointer-events-none" />
