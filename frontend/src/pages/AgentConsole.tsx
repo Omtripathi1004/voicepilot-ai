@@ -31,6 +31,16 @@ export const AgentConsole: React.FC = () => {
     },
   });
 
+  const handleToggleVoice = () => {
+    if (isListening) {
+      // User pressed "Stop Listening" - immediately silence assistant speech and stop mic!
+      wsService.sendInterrupt();
+      toggleListening();
+    } else {
+      toggleListening();
+    }
+  };
+
   // Handle keyboard shortcuts (Escape or Space to interrupt)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -129,7 +139,7 @@ export const AgentConsole: React.FC = () => {
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 flex-1">
                 {/* Push to Talk / Mic Toggle */}
                 <button
-                  onClick={toggleListening}
+                  onClick={handleToggleVoice}
                   className={`group relative flex items-center justify-center gap-2.5 px-5 py-3 sm:px-6 sm:py-3.5 rounded-2xl font-semibold text-xs sm:text-sm transition-all duration-200 shadow-xl select-none w-full sm:w-auto ${
                     isListening
                       ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-emerald-950/60 ring-2 ring-emerald-400/50 scale-[1.02]'

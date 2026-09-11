@@ -672,7 +672,24 @@ class WebSocketService {
     this.isPlayingAudio = false;
     this.currentAudioGenId = null;
 
-    // Stop AudioContext sources
+    // 1. Clear any simulated reasoning/synthesis timeouts immediately
+    this.clearSimTimeouts();
+
+    // 2. Hard stop browser SpeechSynthesis immediately
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      try {
+        window.speechSynthesis.cancel();
+        // On Chrome/Safari, pausing or calling cancel twice forces immediate cutoff
+        if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
+          window.speechSynthesis.cancel();
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+    this.activeUtterance = null;
+
+    // 3. Stop WebAudio context sources
     if (this.audioContext) {
       this.audioContext.close().catch(() => {});
       this.audioContext = null;
